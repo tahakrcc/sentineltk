@@ -34,6 +34,21 @@ app.get('/', (_req, res) => {
     });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+// Health check endpoint for Railway
+app.get('/health', (_req, res) => {
+    res.status(200).json({ status: 'ok', uptime: process.uptime() });
+});
+
+const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`SentinelTK Backend running on http://0.0.0.0:${PORT}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully...');
+    server.close(() => process.exit(0));
+});
+process.on('SIGINT', () => {
+    console.log('SIGINT received, shutting down...');
+    server.close(() => process.exit(0));
 });

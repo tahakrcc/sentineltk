@@ -110,6 +110,8 @@ export const TRUSTED_DOMAINS = [
     'ziraatbank.com.tr', 'halkbank.com.tr', 'vakifbank.com.tr',
     'turkiye.gov.tr', 'e-devlet.gov.tr', 'ptt.gov.tr',
     'trendyol.com', 'hepsiburada.com', 'n11.com', 'sahibinden.com',
+    'bim.com.tr', 'a101.com.tr', 'migros.com.tr', 'carrefoursa.com',
+    'gittigidiyor.com', 'ciceksepeti.com', 'yemeksepeti.com',
 ];
 
 // Fix #1: Hosting subdomainleri — trusted olsa bile taranmalı

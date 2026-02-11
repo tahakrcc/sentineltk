@@ -164,7 +164,14 @@ export const TRUSTED_DOMAINS = [
   "trendyol.com",
   "hepsiburada.com",
   "n11.com",
-  "sahibinden.com"
+  "sahibinden.com",
+  "bim.com.tr",
+  "a101.com.tr",
+  "migros.com.tr",
+  "carrefoursa.com",
+  "gittigidiyor.com",
+  "ciceksepeti.com",
+  "yemeksepeti.com"
 ];
 export const UNTRUSTED_SUBDOMAINS = [
   "sites.google.com",
