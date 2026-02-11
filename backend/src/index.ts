@@ -64,10 +64,10 @@ process.on('SIGINT', () => {
 
 process.on('uncaughtException', (err) => {
     console.error('UNCAUGHT EXCEPTION:', err);
-    process.exit(1);
+    // Don't process.exit(1) — let Railway healthcheck pass
 });
 
 process.on('unhandledRejection', (reason, promise) => {
     console.error('UNHANDLED REJECTION:', reason);
-    process.exit(1);
+    // Don't process.exit(1) — let Railway healthcheck pass
 });

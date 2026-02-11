@@ -1,6 +1,13 @@
 import sqlite3 from 'sqlite3';
+import path from 'path';
 
-export const db = new sqlite3.Database('./sentinel.db');
+const dbPath = path.join(process.cwd(), 'sentinel.db');
+console.log('Database path:', dbPath);
+
+export const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) console.error('DB connection error:', err);
+  else console.log('DB connected at:', dbPath);
+});
 
 export function initDb() {
   db.serialize(() => {

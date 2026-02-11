@@ -3,7 +3,13 @@ import { promises as dns } from 'dns';
 import https from 'https';
 
 // ssl-checker doesn't have types, so we use require
-const sslChecker = require('ssl-checker');
+let sslChecker: any;
+try {
+    sslChecker = require('ssl-checker');
+} catch (e) {
+    console.warn('ssl-checker module not available:', e);
+    sslChecker = null;
+}
 
 export interface TechnicalAnalysis {
     ssl: {
@@ -35,6 +41,7 @@ export async function performTechnicalAnalysis(domain: string): Promise<Technica
 
     // 1. SSL Check
     try {
+        if (!sslChecker) throw new Error('ssl-checker not loaded');
         const sslData = await sslChecker(domain, { method: 'GET', port: 443 });
 
         const issuedTo = (sslData as any).issuedTo || (sslData as any).commonName || undefined;
