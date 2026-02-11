@@ -9,6 +9,8 @@ export const SCORE_SAFE_MAX = 39;
 export const SCORE_SUSPICIOUS_MAX = 69;
 
 // Weights for risk scoring
+import { SMART_TOP_DOMAINS } from './smart_domains';
+
 export const WEIGHTS = {
     // Domain signals (40% of total)
     DOMAIN_FRESH_30D: 15,
@@ -86,32 +88,13 @@ export const URGENCY_WORDS_EN = [
 
 // Top domains for typosquatting detection
 export const TOP_DOMAINS = [
-    'google.com', 'facebook.com', 'youtube.com', 'twitter.com', 'instagram.com',
-    'linkedin.com', 'amazon.com', 'apple.com', 'microsoft.com', 'netflix.com',
-    'paypal.com', 'ebay.com', 'whatsapp.com', 'telegram.org', 'reddit.com',
-    'github.com', 'stackoverflow.com', 'wikipedia.org',
-    // Turkish banks & services
-    'garanti.com.tr', 'akbank.com', 'isbank.com.tr', 'yapikredi.com.tr',
-    'ziraatbank.com.tr', 'halkbank.com.tr', 'vakifbank.com.tr', 'qnb.com.tr',
-    'denizbank.com', 'ingbank.com.tr', 'teb.com.tr', 'hsbc.com.tr',
-    'turkiye.gov.tr', 'ptt.gov.tr', 'e-devlet.gov.tr',
-    'trendyol.com', 'hepsiburada.com', 'n11.com', 'sahibinden.com',
-    'binance.com', 'btcturk.com', 'paribu.com',
+    ...SMART_TOP_DOMAINS
 ];
 
 // Fix #1: Trusted domains — hosting subdomainleri HARİÇ
+// Fix #1: Trusted domains — hosting subdomainleri HARİÇ
 export const TRUSTED_DOMAINS = [
-    'google.com', 'google.com.tr', 'youtube.com', 'facebook.com', 'twitter.com',
-    'instagram.com', 'linkedin.com', 'amazon.com', 'apple.com', 'microsoft.com',
-    'github.com', 'stackoverflow.com', 'wikipedia.org', 'reddit.com', 'whatsapp.com',
-    'netflix.com', 'spotify.com', 'zoom.us', 'discord.com', 'twitch.tv',
-    // Turkish trusted
-    'garanti.com.tr', 'akbank.com', 'isbank.com.tr', 'yapikredi.com.tr',
-    'ziraatbank.com.tr', 'halkbank.com.tr', 'vakifbank.com.tr',
-    'turkiye.gov.tr', 'e-devlet.gov.tr', 'ptt.gov.tr',
-    'trendyol.com', 'hepsiburada.com', 'n11.com', 'sahibinden.com',
-    'bim.com.tr', 'a101.com.tr', 'migros.com.tr', 'carrefoursa.com',
-    'gittigidiyor.com', 'ciceksepeti.com', 'yemeksepeti.com',
+    ...SMART_TOP_DOMAINS
 ];
 
 // Fix #1: Hosting subdomainleri — trusted olsa bile taranmalı
