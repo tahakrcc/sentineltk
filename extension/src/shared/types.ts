@@ -58,6 +58,26 @@ export interface TabState {
     timestamp: number;
 }
 
+export interface TechnicalAnalysis {
+    ssl: {
+        valid: boolean;
+        issuedTo?: string;
+        issuedBy?: string;
+        expires?: string;
+        daysRemaining?: number;
+        error?: string;
+    };
+    dns: {
+        aRecords: string[];
+        mxRecords: string[];
+        hasEmailServer: boolean;
+    };
+    server: {
+        ip?: string;
+        location?: string;
+    };
+}
+
 // Messages between content script and background
 export type MessageType =
     | { type: 'PAGE_SIGNALS'; data: Partial<PageSignals> }

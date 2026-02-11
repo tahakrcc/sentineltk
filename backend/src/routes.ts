@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from './db';
 import { rateLimiter } from './middleware';
+import { performTechnicalAnalysis } from './analysis';
 
 export const apiRoutes = Router();
 
@@ -66,6 +67,27 @@ apiRoutes.post('/score', (req: Request, res: Response) => {
             );
         }
     );
+});
+
+// ═══════════════════════════════════════════════════════════════
+// POST /analyze-details - Detailed technical analysis (SSL/DNS)
+// ═══════════════════════════════════════════════════════════════
+apiRoutes.post('/analyze-details', async (req: Request, res: Response) => {
+    const { domain } = req.body;
+
+    if (!domain || typeof domain !== 'string') {
+        return res.status(400).json({ error: 'Domain is required' });
+    }
+
+    const cleanDomain = domain.toLowerCase().replace(/[^a-z0-9.\-]/g, '');
+
+    // Perform real-time analysis
+    const analysis = await performTechnicalAnalysis(cleanDomain);
+
+    return res.json({
+        domain: cleanDomain,
+        analysis,
+    });
 });
 
 // ═══════════════════════════════════════════════════════════════

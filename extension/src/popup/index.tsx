@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
-import type { TabState, ScoreFactor } from '../shared/types';
+import type { TabState, ScoreFactor, TechnicalAnalysis } from '../shared/types';
+import { BACKEND_URL } from '../shared/constants';
 
 const Popup: React.FC = () => {
     const [tabState, setTabState] = useState<TabState | null>(null);
+    const [technicalDetails, setTechnicalDetails] = useState<TechnicalAnalysis | null>(null);
     const [loading, setLoading] = useState(true);
+    const [techLoading, setTechLoading] = useState(false);
     const [reported, setReported] = useState(false);
     const [reportReason, setReportReason] = useState('');
     const [showReportForm, setShowReportForm] = useState(false);
     const [expanded, setExpanded] = useState(true);
+    const [techExpanded, setTechExpanded] = useState(false);
 
     useEffect(() => {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -16,11 +20,36 @@ const Popup: React.FC = () => {
             if (!tabId) { setLoading(false); return; }
 
             chrome.runtime.sendMessage({ type: 'GET_TAB_STATE', tabId }, (response) => {
-                if (response?.data) setTabState(response.data);
+                if (response?.data) {
+                    setTabState(response.data);
+                    // Automatically fetch technical details if domain is available
+                    if (response.data.hostname) {
+                        fetchTechnicalDetails(response.data.hostname);
+                    }
+                }
                 setLoading(false);
             });
         });
     }, []);
+
+    const fetchTechnicalDetails = async (domain: string) => {
+        setTechLoading(true);
+        try {
+            const res = await fetch(`${BACKEND_URL}/analyze-details`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ domain }),
+            });
+            const data = await res.json();
+            if (data.analysis) {
+                setTechnicalDetails(data.analysis);
+            }
+        } catch (e) {
+            console.error('Failed to fetch technical details', e);
+        } finally {
+            setTechLoading(false);
+        }
+    };
 
     const handleReport = () => {
         if (!tabState || !reportReason) return;
@@ -97,7 +126,6 @@ const Popup: React.FC = () => {
         if (signal.includes('backend') || signal.includes('reputation')) return '🌍';
         if (signal.includes('frequent') || signal.includes('visit')) return '🔄';
         if (signal.includes('tr_tld')) return '🇹🇷';
-        if (signal.includes('country')) return '🗺️';
         return '📌';
     };
 
@@ -116,13 +144,14 @@ const Popup: React.FC = () => {
         return (
             <div style={styles.container}>
                 <div style={styles.header}>
-                    <span style={styles.logo}>🛡️</span>
-                    <h2 style={styles.title}>SentinelTK</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={styles.logo}>🛡️</span>
+                        <h2 style={styles.title}>SentinelTK</h2>
+                    </div>
                 </div>
                 <div style={styles.emptyState}>
                     <span style={{ fontSize: 32 }}>🔍</span>
                     <p style={styles.noData}>Bu sayfa henüz analiz edilmedi.</p>
-                    <p style={styles.noDataSub}>Bir web sayfasına gidin ve tekrar kontrol edin.</p>
                 </div>
             </div>
         );
@@ -141,7 +170,7 @@ const Popup: React.FC = () => {
                     <span style={styles.logo}>🛡️</span>
                     <h2 style={styles.title}>SentinelTK</h2>
                 </div>
-                <span style={styles.version}>v1.0</span>
+                <span style={styles.version}>v1.1</span>
             </div>
 
             {/* Score Circle */}
@@ -159,63 +188,115 @@ const Popup: React.FC = () => {
                 </div>
             </div>
 
-            {/* Safe Start indicator */}
+            {/* Safe Start & Override Banners */}
             {tabState.safeStartActive && (
-                <div style={styles.safeStartBanner}>
-                    🔒 Güvenli Başlangıç aktif — ağ istekleri engelleniyor
-                </div>
+                <div style={styles.safeStartBanner}>🔒 Güvenli Başlangıç aktif</div>
             )}
-
-            {/* User Override indicator */}
             {tabState.userOverride && (
-                <div style={styles.overrideBanner}>
-                    ✅ Kullanıcı bu siteyi onayladı
-                </div>
+                <div style={styles.overrideBanner}>✅ Kullanıcı bu siteyi onayladı</div>
             )}
 
             {/* Factors Section */}
             <div style={styles.factorsSection}>
-                <div
-                    style={styles.factorsHeader}
-                    onClick={() => setExpanded(!expanded)}
-                >
-                    <h4 style={styles.factorsTitle}>
-                        📊 Analiz Detayları ({score.factors.length} sinyal)
-                    </h4>
+                <div style={styles.factorsHeader} onClick={() => setExpanded(!expanded)}>
+                    <h4 style={styles.factorsTitle}>📊 Risk Analizi ({score.factors.length})</h4>
                     <span style={styles.expandIcon}>{expanded ? '▼' : '▶'}</span>
                 </div>
 
                 {expanded && (
                     <div style={styles.factorsList}>
-                        {/* Neutral (trusted/whitelisted) */}
-                        {neutralFactors.map((f: ScoreFactor, i: number) => (
+                        {neutralFactors.map((f, i) => (
                             <div key={`n${i}`} style={{ ...styles.factor, borderLeftColor: '#22c55e' }}>
                                 <span style={styles.factorIcon}>{getFactorIcon(f.signal)}</span>
                                 <span style={styles.factorDesc}>{f.description}</span>
                                 <span style={{ ...styles.factorWeight, color: '#22c55e' }}>0</span>
                             </div>
                         ))}
-
-                        {/* Negative (risk reduction) */}
-                        {positiveFactors.map((f: ScoreFactor, i: number) => (
+                        {positiveFactors.map((f, i) => (
                             <div key={`p${i}`} style={{ ...styles.factor, borderLeftColor: '#22c55e' }}>
                                 <span style={styles.factorIcon}>{getFactorIcon(f.signal)}</span>
                                 <span style={styles.factorDesc}>{f.description}</span>
                                 <span style={{ ...styles.factorWeight, color: '#22c55e' }}>{f.weight}</span>
                             </div>
                         ))}
-
-                        {/* Positive (risk increasing) */}
-                        {negativeFactors.map((f: ScoreFactor, i: number) => (
-                            <div key={`r${i}`} style={{ ...styles.factor, borderLeftColor: getScoreColor(f.weight > 15 ? 70 : f.weight > 5 ? 50 : 30) }}>
+                        {negativeFactors.map((f, i) => (
+                            <div key={`r${i}`} style={{ ...styles.factor, borderLeftColor: getScoreColor(f.weight > 15 ? 70 : 30) }}>
                                 <span style={styles.factorIcon}>{getFactorIcon(f.signal)}</span>
                                 <span style={styles.factorDesc}>{f.description}</span>
                                 <span style={{ ...styles.factorWeight, color: '#ef4444' }}>+{f.weight}</span>
                             </div>
                         ))}
+                    </div>
+                )}
+            </div>
 
-                        {score.factors.length === 0 && (
-                            <p style={styles.noFactors}>Hiçbir şüpheli sinyal tespit edilmedi.</p>
+            {/* Technical Analysis Section */}
+            <div style={styles.factorsSection}>
+                <div style={styles.factorsHeader} onClick={() => setTechExpanded(!techExpanded)}>
+                    <h4 style={styles.factorsTitle}>🔒 Sunucu & Teknik Analiz</h4>
+                    <span style={styles.expandIcon}>{techExpanded ? '▼' : '▶'}</span>
+                </div>
+
+                {techExpanded && (
+                    <div style={styles.factorsList}>
+                        {techLoading ? (
+                            <div style={styles.miniLoading}>
+                                <div style={{ ...styles.spinner, width: 16, height: 16, borderWidth: 2 }}></div>
+                                <span style={{ fontSize: 11, color: '#9ca3af' }}>Sunucu taranıyor...</span>
+                            </div>
+                        ) : technicalDetails ? (
+                            <>
+                                {/* SSL Info */}
+                                <div style={styles.techItem}>
+                                    <span style={styles.techLabel}>SSL Sertifikası</span>
+                                    <span style={{ color: technicalDetails.ssl.valid ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
+                                        {technicalDetails.ssl.valid ? '✅ Geçerli' : '❌ Geçersiz/Yok'}
+                                    </span>
+                                </div>
+                                {technicalDetails.ssl.valid && (
+                                    <>
+                                        {technicalDetails.ssl.issuedTo && (
+                                            <div style={styles.techSubItem}>
+                                                <span style={styles.techSubLabel}>Kime:</span>
+                                                <span>{technicalDetails.ssl.issuedTo}</span>
+                                            </div>
+                                        )}
+                                        {technicalDetails.ssl.issuedBy && (
+                                            <div style={styles.techSubItem}>
+                                                <span style={styles.techSubLabel}>Veren:</span>
+                                                <span>{technicalDetails.ssl.issuedBy}</span>
+                                            </div>
+                                        )}
+                                        {technicalDetails.ssl.daysRemaining !== undefined && (
+                                            <div style={styles.techSubItem}>
+                                                <span style={styles.techSubLabel}>Kalan Gün:</span>
+                                                <span style={{ color: technicalDetails.ssl.daysRemaining < 30 ? '#f59e0b' : '#d1d5db' }}>
+                                                    {technicalDetails.ssl.daysRemaining} gün
+                                                </span>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+
+                                {/* DNS Info */}
+                                <div style={{ ...styles.techItem, marginTop: 8 }}>
+                                    <span style={styles.techLabel}>DNS Kayıtları</span>
+                                </div>
+                                <div style={styles.techSubItem}>
+                                    <span style={styles.techSubLabel}>E-posta Sunucusu:</span>
+                                    <span>
+                                        {technicalDetails.dns.hasEmailServer ? '✅ Var (MX)' : '⚠️ Yok (Şüpheli)'}
+                                    </span>
+                                </div>
+                                {technicalDetails.server.ip && (
+                                    <div style={styles.techSubItem}>
+                                        <span style={styles.techSubLabel}>Sunucu IP:</span>
+                                        <span>{technicalDetails.server.ip}</span>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <p style={styles.noFactors}>Teknik veriler alınamadı.</p>
                         )}
                     </div>
                 )}
@@ -226,18 +307,14 @@ const Popup: React.FC = () => {
                 {!showReportForm ? (
                     <>
                         {score.level === 'danger' && !tabState.userOverride && (
-                            <button style={styles.overrideBtn} onClick={handleOverride}>
-                                🔓 Yine de Devam Et
-                            </button>
+                            <button style={styles.overrideBtn} onClick={handleOverride}>🔓 Yine de Devam Et</button>
                         )}
                         <div style={{ display: 'flex', gap: 6 }}>
                             <button style={styles.reportBtn} onClick={() => setShowReportForm(true)} disabled={reported}>
                                 {reported ? '✓ Gönderildi' : '🚩 Rapor Et'}
                             </button>
                             {score.score > 0 && (
-                                <button style={styles.whitelistBtn} onClick={handleWhitelist}>
-                                    ✓ Güvenli Listeme Ekle
-                                </button>
+                                <button style={styles.whitelistBtn} onClick={handleWhitelist}>Güvenli Ekle</button>
                             )}
                         </div>
                     </>
@@ -245,11 +322,10 @@ const Popup: React.FC = () => {
                     <div style={styles.reportForm}>
                         <select value={reportReason} onChange={(e) => setReportReason(e.target.value)} style={styles.select}>
                             <option value="">Sebep seçin...</option>
-                            <option value="phishing">Kimlik Avı (Phishing)</option>
+                            <option value="phishing">Kimlik Avı</option>
                             <option value="scam">Dolandırıcılık</option>
                             <option value="malware">Zararlı Yazılım</option>
                             <option value="fake_shop">Sahte Mağaza</option>
-                            <option value="other">Diğer</option>
                         </select>
                         <div style={styles.reportActions}>
                             <button style={styles.reportSubmit} onClick={handleReport} disabled={!reportReason}>Gönder</button>
@@ -259,20 +335,17 @@ const Popup: React.FC = () => {
                 )}
             </div>
 
-            {/* Footer */}
-            <div style={styles.footer}>
-                <span>🔒 Kişisel verileriniz asla okunmaz veya kaydedilmez.</span>
-            </div>
+            <div style={styles.footer}>🔒 Verileriniz güvende</div>
         </div>
     );
 };
 
-// ── Styles ──
+// ── Styles (Updated) ──
 const styles: Record<string, React.CSSProperties> = {
     container: {
         width: 360, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         background: 'linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%)', color: '#e5e7eb', fontSize: 13,
-        overflow: 'hidden',
+        overflow: 'hidden', minHeight: 400,
     },
     header: {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -281,8 +354,6 @@ const styles: Record<string, React.CSSProperties> = {
     logo: { fontSize: 20 },
     title: { margin: 0, fontSize: 15, color: '#fff', fontWeight: 700, letterSpacing: '0.5px' },
     version: { fontSize: 10, color: '#6b7280', background: '#1f2937', padding: '2px 6px', borderRadius: 4 },
-
-    // Score section
     scoreSection: {
         display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px',
     },
@@ -297,8 +368,6 @@ const styles: Record<string, React.CSSProperties> = {
     levelBadge: { fontSize: 15, fontWeight: 700 },
     domain: { color: '#9ca3af', fontSize: 11, wordBreak: 'break-all' as const },
     levelDesc: { color: '#6b7280', fontSize: 11, lineHeight: 1.3 },
-
-    // Safe-Start banner
     safeStartBanner: {
         background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', fontSize: 11,
         padding: '6px 16px', borderTop: '1px solid rgba(245, 158, 11, 0.2)',
@@ -309,8 +378,6 @@ const styles: Record<string, React.CSSProperties> = {
         padding: '6px 16px', borderTop: '1px solid rgba(34, 197, 94, 0.2)',
         borderBottom: '1px solid rgba(34, 197, 94, 0.2)',
     },
-
-    // Factors
     factorsSection: {
         margin: '0 12px 8px', background: 'rgba(30, 41, 59, 0.6)', borderRadius: 8,
         border: '1px solid rgba(71, 85, 105, 0.3)', overflow: 'hidden',
@@ -331,8 +398,6 @@ const styles: Record<string, React.CSSProperties> = {
     factorDesc: { color: '#cbd5e1', fontSize: 11, flex: 1 },
     factorWeight: { fontWeight: 700, fontSize: 12, minWidth: 24, textAlign: 'right' as const },
     noFactors: { color: '#64748b', fontSize: 11, textAlign: 'center' as const, padding: 8 },
-
-    // Actions
     actions: { padding: '0 12px 8px', display: 'flex', flexDirection: 'column' as const, gap: 6 },
     overrideBtn: {
         background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)',
@@ -360,8 +425,6 @@ const styles: Record<string, React.CSSProperties> = {
         flex: 1, background: '#374151', color: '#9ca3af', border: 'none',
         padding: '7px 0', borderRadius: 6, cursor: 'pointer', fontSize: 12,
     },
-
-    // Loading
     loadingContainer: { padding: 40, textAlign: 'center' as const },
     spinner: {
         width: 32, height: 32, border: '3px solid #374151', borderTop: '3px solid #6366f1',
@@ -369,20 +432,19 @@ const styles: Record<string, React.CSSProperties> = {
         animation: 'spin 1s linear infinite',
     },
     loadingText: { color: '#9ca3af', fontSize: 13 },
-
-    // Empty
     emptyState: { textAlign: 'center' as const, padding: '24px 16px' },
     noData: { color: '#6b7280', fontSize: 13, margin: '8px 0 4px' },
-    noDataSub: { color: '#4b5563', fontSize: 11, margin: 0 },
-
-    // Footer
     footer: {
         textAlign: 'center' as const, color: '#475569', fontSize: 10,
         padding: '6px 16px 10px', borderTop: '1px solid rgba(71, 85, 105, 0.2)',
     },
+    techItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#e2e8f0', marginBottom: 4 },
+    techLabel: { color: '#94a3b8', fontWeight: 600 },
+    techSubItem: { display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#cbd5e1', paddingLeft: 8, marginBottom: 2 },
+    techSubLabel: { color: '#64748b' },
+    miniLoading: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', padding: 12, gap: 6 },
 };
 
-// Add spinner animation via style tag
 const styleSheet = document.createElement('style');
 styleSheet.textContent = `
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -396,7 +458,6 @@ styleSheet.textContent = `
 `;
 document.head.appendChild(styleSheet);
 
-// Mount
 ReactDOM.createRoot(document.getElementById('app')!).render(
     <React.StrictMode>
         <Popup />
