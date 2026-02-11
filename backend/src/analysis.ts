@@ -1,7 +1,9 @@
 
-import sslChecker from 'ssl-checker';
 import { promises as dns } from 'dns';
 import https from 'https';
+
+// ssl-checker doesn't have types, so we use require
+const sslChecker = require('ssl-checker');
 
 export interface TechnicalAnalysis {
     ssl: {
