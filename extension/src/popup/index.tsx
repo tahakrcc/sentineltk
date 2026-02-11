@@ -22,7 +22,6 @@ const Popup: React.FC = () => {
             chrome.runtime.sendMessage({ type: 'GET_TAB_STATE', tabId }, (response) => {
                 if (response?.data) {
                     setTabState(response.data);
-                    // Automatically fetch technical details if domain is available
                     if (response.data.hostname) {
                         fetchTechnicalDetails(response.data.hostname);
                     }
@@ -103,8 +102,8 @@ const Popup: React.FC = () => {
     const getLevelDesc = (level: string) => {
         switch (level) {
             case 'safe': return 'Bu site güvenli görünüyor.';
-            case 'suspicious': return 'Bu site şüpheli işaretler taşıyor. Kişisel bilgilerinizi paylaşırken dikkatli olun.';
-            case 'danger': return 'Bu site yüksek risk taşıyor! Kişisel bilgilerinizi kesinlikle paylaşmayın.';
+            case 'suspicious': return 'Bu site şüpheli işaretler taşıyor.';
+            case 'danger': return 'Bu site yüksek risk taşıyor!';
             default: return '';
         }
     };
@@ -127,6 +126,36 @@ const Popup: React.FC = () => {
         if (signal.includes('frequent') || signal.includes('visit')) return '🔄';
         if (signal.includes('tr_tld')) return '🇹🇷';
         return '📌';
+    };
+
+    // Helper to render factor with extra details
+    const renderFactor = (f: ScoreFactor, color: string) => {
+        // Collect extra details for specific signals
+        let details: string[] = [];
+
+        if (f.signal === 'fake_badge' && tabState?.signals.fakeBadgeNames?.length) {
+            details = tabState.signals.fakeBadgeNames;
+        } else if (f.signal === 'urgency_text' && tabState?.signals.urgencyKeywords?.length) {
+            details = tabState.signals.urgencyKeywords;
+        } else if (f.signal === 'suspicious_contact') {
+            if (tabState?.signals.contactInfo?.emails.length) details.push(...tabState.signals.contactInfo.emails);
+            if (tabState?.signals.contactInfo?.phones.length) details.push(...tabState.signals.contactInfo.phones);
+        }
+
+        return (
+            <div key={f.signal} style={{ ...styles.factor, borderLeftColor: color }}>
+                <span style={styles.factorIcon}>{getFactorIcon(f.signal)}</span>
+                <div style={styles.factorContent}>
+                    <span style={styles.factorDesc}>{f.description}</span>
+                    {details.length > 0 && (
+                        <div style={styles.factorDetails}>
+                            {details.map((d, i) => <span key={i} style={styles.detailTag}>{d}</span>)}
+                        </div>
+                    )}
+                </div>
+                <span style={{ ...styles.factorWeight, color }}>{f.weight > 0 ? `+${f.weight}` : f.weight}</span>
+            </div>
+        );
     };
 
     if (loading) {
@@ -170,7 +199,7 @@ const Popup: React.FC = () => {
                     <span style={styles.logo}>🛡️</span>
                     <h2 style={styles.title}>SentinelTK</h2>
                 </div>
-                <span style={styles.version}>v1.1</span>
+                <span style={styles.version}>v1.2</span>
             </div>
 
             {/* Score Circle */}
@@ -188,14 +217,6 @@ const Popup: React.FC = () => {
                 </div>
             </div>
 
-            {/* Safe Start & Override Banners */}
-            {tabState.safeStartActive && (
-                <div style={styles.safeStartBanner}>🔒 Güvenli Başlangıç aktif</div>
-            )}
-            {tabState.userOverride && (
-                <div style={styles.overrideBanner}>✅ Kullanıcı bu siteyi onayladı</div>
-            )}
-
             {/* Factors Section */}
             <div style={styles.factorsSection}>
                 <div style={styles.factorsHeader} onClick={() => setExpanded(!expanded)}>
@@ -205,27 +226,9 @@ const Popup: React.FC = () => {
 
                 {expanded && (
                     <div style={styles.factorsList}>
-                        {neutralFactors.map((f, i) => (
-                            <div key={`n${i}`} style={{ ...styles.factor, borderLeftColor: '#22c55e' }}>
-                                <span style={styles.factorIcon}>{getFactorIcon(f.signal)}</span>
-                                <span style={styles.factorDesc}>{f.description}</span>
-                                <span style={{ ...styles.factorWeight, color: '#22c55e' }}>0</span>
-                            </div>
-                        ))}
-                        {positiveFactors.map((f, i) => (
-                            <div key={`p${i}`} style={{ ...styles.factor, borderLeftColor: '#22c55e' }}>
-                                <span style={styles.factorIcon}>{getFactorIcon(f.signal)}</span>
-                                <span style={styles.factorDesc}>{f.description}</span>
-                                <span style={{ ...styles.factorWeight, color: '#22c55e' }}>{f.weight}</span>
-                            </div>
-                        ))}
-                        {negativeFactors.map((f, i) => (
-                            <div key={`r${i}`} style={{ ...styles.factor, borderLeftColor: getScoreColor(f.weight > 15 ? 70 : 30) }}>
-                                <span style={styles.factorIcon}>{getFactorIcon(f.signal)}</span>
-                                <span style={styles.factorDesc}>{f.description}</span>
-                                <span style={{ ...styles.factorWeight, color: '#ef4444' }}>+{f.weight}</span>
-                            </div>
-                        ))}
+                        {neutralFactors.map(f => renderFactor(f, '#22c55e'))}
+                        {positiveFactors.map(f => renderFactor(f, '#22c55e'))}
+                        {negativeFactors.map(f => renderFactor(f, getScoreColor(f.weight > 10 ? 50 : 20)))}
                     </div>
                 )}
             </div>
@@ -258,13 +261,13 @@ const Popup: React.FC = () => {
                                         {technicalDetails.ssl.issuedTo && (
                                             <div style={styles.techSubItem}>
                                                 <span style={styles.techSubLabel}>Kime:</span>
-                                                <span>{technicalDetails.ssl.issuedTo}</span>
+                                                <span style={styles.techValue}>{technicalDetails.ssl.issuedTo}</span>
                                             </div>
                                         )}
                                         {technicalDetails.ssl.issuedBy && (
                                             <div style={styles.techSubItem}>
                                                 <span style={styles.techSubLabel}>Veren:</span>
-                                                <span>{technicalDetails.ssl.issuedBy}</span>
+                                                <span style={styles.techValue}>{technicalDetails.ssl.issuedBy}</span>
                                             </div>
                                         )}
                                         {technicalDetails.ssl.daysRemaining !== undefined && (
@@ -279,20 +282,38 @@ const Popup: React.FC = () => {
                                 )}
 
                                 {/* DNS Info */}
-                                <div style={{ ...styles.techItem, marginTop: 8 }}>
-                                    <span style={styles.techLabel}>DNS Kayıtları</span>
+                                <div style={{ ...styles.techItem, marginTop: 12 }}>
+                                    <span style={styles.techLabel}>Altyapı & DNS</span>
                                 </div>
                                 <div style={styles.techSubItem}>
-                                    <span style={styles.techSubLabel}>E-posta Sunucusu:</span>
+                                    <span style={styles.techSubLabel}>E-posta (MX):</span>
                                     <span>
-                                        {technicalDetails.dns.hasEmailServer ? '✅ Var (MX)' : '⚠️ Yok (Şüpheli)'}
+                                        {technicalDetails.dns.hasEmailServer ? '✅ Var' : '⚠️ Yok (Şüpheli)'}
                                     </span>
                                 </div>
                                 {technicalDetails.server.ip && (
                                     <div style={styles.techSubItem}>
-                                        <span style={styles.techSubLabel}>Sunucu IP:</span>
-                                        <span>{technicalDetails.server.ip}</span>
+                                        <span style={styles.techSubLabel}>IP Adresi:</span>
+                                        <span style={{ fontFamily: 'monospace' }}>{technicalDetails.server.ip}</span>
                                     </div>
+                                )}
+
+                                {/* Server Headers (New) */}
+                                {technicalDetails.server.headers && (
+                                    <>
+                                        {technicalDetails.server.headers['Server'] && (
+                                            <div style={styles.techSubItem}>
+                                                <span style={styles.techSubLabel}>Sunucu Yazılımı:</span>
+                                                <span style={styles.techValue}>{technicalDetails.server.headers['Server']}</span>
+                                            </div>
+                                        )}
+                                        {technicalDetails.server.headers['X-Powered-By'] && (
+                                            <div style={styles.techSubItem}>
+                                                <span style={styles.techSubLabel}>Teknoloji:</span>
+                                                <span style={styles.techValue}>{technicalDetails.server.headers['X-Powered-By']}</span>
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                             </>
                         ) : (
@@ -324,8 +345,6 @@ const Popup: React.FC = () => {
                             <option value="">Sebep seçin...</option>
                             <option value="phishing">Kimlik Avı</option>
                             <option value="scam">Dolandırıcılık</option>
-                            <option value="malware">Zararlı Yazılım</option>
-                            <option value="fake_shop">Sahte Mağaza</option>
                         </select>
                         <div style={styles.reportActions}>
                             <button style={styles.reportSubmit} onClick={handleReport} disabled={!reportReason}>Gönder</button>
@@ -340,23 +359,18 @@ const Popup: React.FC = () => {
     );
 };
 
-// ── Styles (Updated) ──
+// ── Styles (Detailed Update) ──
 const styles: Record<string, React.CSSProperties> = {
     container: {
         width: 360, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         background: 'linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%)', color: '#e5e7eb', fontSize: 13,
         overflow: 'hidden', minHeight: 400,
     },
-    header: {
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '12px 16px 0', marginBottom: 0,
-    },
+    header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px 0' },
     logo: { fontSize: 20 },
     title: { margin: 0, fontSize: 15, color: '#fff', fontWeight: 700, letterSpacing: '0.5px' },
     version: { fontSize: 10, color: '#6b7280', background: '#1f2937', padding: '2px 6px', borderRadius: 4 },
-    scoreSection: {
-        display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px',
-    },
+    scoreSection: { display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px' },
     scoreCircle: {
         width: 64, height: 64, borderRadius: '50%', display: 'flex', flexDirection: 'column' as const,
         alignItems: 'center', justifyContent: 'center', flexShrink: 0,
@@ -368,16 +382,8 @@ const styles: Record<string, React.CSSProperties> = {
     levelBadge: { fontSize: 15, fontWeight: 700 },
     domain: { color: '#9ca3af', fontSize: 11, wordBreak: 'break-all' as const },
     levelDesc: { color: '#6b7280', fontSize: 11, lineHeight: 1.3 },
-    safeStartBanner: {
-        background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', fontSize: 11,
-        padding: '6px 16px', borderTop: '1px solid rgba(245, 158, 11, 0.2)',
-        borderBottom: '1px solid rgba(245, 158, 11, 0.2)',
-    },
-    overrideBanner: {
-        background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', fontSize: 11,
-        padding: '6px 16px', borderTop: '1px solid rgba(34, 197, 94, 0.2)',
-        borderBottom: '1px solid rgba(34, 197, 94, 0.2)',
-    },
+
+    // Factors with details
     factorsSection: {
         margin: '0 12px 8px', background: 'rgba(30, 41, 59, 0.6)', borderRadius: 8,
         border: '1px solid rgba(71, 85, 105, 0.3)', overflow: 'hidden',
@@ -388,16 +394,30 @@ const styles: Record<string, React.CSSProperties> = {
     },
     factorsTitle: { margin: 0, fontSize: 12, color: '#94a3b8', fontWeight: 600 },
     expandIcon: { fontSize: 10, color: '#64748b' },
-    factorsList: { padding: '0 8px 8px', maxHeight: 180, overflowY: 'auto' as const },
+    factorsList: { padding: '0 8px 8px', maxHeight: 220, overflowY: 'auto' as const },
     factor: {
-        display: 'flex', gap: 6, padding: '5px 8px', marginBottom: 3,
+        display: 'flex', gap: 8, padding: '6px 8px', marginBottom: 4,
         background: 'rgba(15, 23, 42, 0.4)', borderRadius: 5,
-        alignItems: 'center', borderLeft: '3px solid transparent',
+        alignItems: 'flex-start', borderLeft: '3px solid transparent',
     },
-    factorIcon: { fontSize: 13, flexShrink: 0 },
-    factorDesc: { color: '#cbd5e1', fontSize: 11, flex: 1 },
+    factorIcon: { fontSize: 14, marginTop: 2 },
+    factorContent: { flex: 1 },
+    factorDesc: { color: '#cbd5e1', fontSize: 12, display: 'block' },
+    factorDetails: { marginTop: 4, display: 'flex', flexWrap: 'wrap' as const, gap: 4 },
+    detailTag: {
+        fontSize: 10, background: 'rgba(255,255,255,0.1)', color: '#94a3b8',
+        padding: '2px 6px', borderRadius: 4,
+    },
     factorWeight: { fontWeight: 700, fontSize: 12, minWidth: 24, textAlign: 'right' as const },
     noFactors: { color: '#64748b', fontSize: 11, textAlign: 'center' as const, padding: 8 },
+
+    // Tech items
+    techItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#e2e8f0', marginBottom: 4 },
+    techLabel: { color: '#94a3b8', fontWeight: 600 },
+    techSubItem: { display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#cbd5e1', paddingLeft: 8, marginBottom: 3 },
+    techSubLabel: { color: '#64748b' },
+    techValue: { maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
+
     actions: { padding: '0 12px 8px', display: 'flex', flexDirection: 'column' as const, gap: 6 },
     overrideBtn: {
         background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)',
@@ -438,10 +458,6 @@ const styles: Record<string, React.CSSProperties> = {
         textAlign: 'center' as const, color: '#475569', fontSize: 10,
         padding: '6px 16px 10px', borderTop: '1px solid rgba(71, 85, 105, 0.2)',
     },
-    techItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#e2e8f0', marginBottom: 4 },
-    techLabel: { color: '#94a3b8', fontWeight: 600 },
-    techSubItem: { display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#cbd5e1', paddingLeft: 8, marginBottom: 2 },
-    techSubLabel: { color: '#64748b' },
     miniLoading: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', padding: 12, gap: 6 },
 };
 

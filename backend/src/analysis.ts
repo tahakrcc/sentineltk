@@ -1,6 +1,7 @@
 
 import sslChecker from 'ssl-checker';
 import { promises as dns } from 'dns';
+import https from 'https';
 
 export interface TechnicalAnalysis {
     ssl: {
@@ -19,6 +20,7 @@ export interface TechnicalAnalysis {
     server: {
         ip?: string;
         location?: string;
+        headers?: Record<string, string>;
     };
 }
 
@@ -29,12 +31,10 @@ export async function performTechnicalAnalysis(domain: string): Promise<Technica
         server: {},
     };
 
+    // 1. SSL Check
     try {
-        // 1. SSL Check (timeout 3s to not block too long)
-        // ssl-checker returns { valid, validFrom, validTo, daysRemaining, issuer, ... }
         const sslData = await sslChecker(domain, { method: 'GET', port: 443 });
 
-        // Safety check for properties
         const issuedTo = (sslData as any).issuedTo || (sslData as any).commonName || undefined;
         const issuedBy = (sslData as any).issuer?.O || (sslData as any).issuer?.CN || undefined;
 
@@ -46,12 +46,11 @@ export async function performTechnicalAnalysis(domain: string): Promise<Technica
             daysRemaining: sslData.daysRemaining,
         };
     } catch (e: any) {
-        // SSL failures are common for some domains or if blocked
         result.ssl.error = e.message || 'SSL/TLS Connection Failed';
     }
 
+    // 2. DNS Checks
     try {
-        // 2. DNS Checks
         const [aRecords, mxRecords] = await Promise.allSettled([
             dns.resolve4(domain),
             dns.resolveMx(domain),
@@ -67,7 +66,37 @@ export async function performTechnicalAnalysis(domain: string): Promise<Technica
             result.dns.hasEmailServer = mxRecords.value.length > 0;
         }
     } catch (e) {
-        // DNS errors ignored
+        // DNS failures expected
+    }
+
+    // 3. Header Analysis (HEAD request)
+    try {
+        await new Promise<void>((resolve) => {
+            const req = https.request({
+                hostname: domain,
+                port: 443,
+                method: 'HEAD',
+                timeout: 3000,
+            }, (res) => {
+                const headers: Record<string, string> = {};
+
+                // Extract interesting headers
+                if (res.headers['server']) headers['Server'] = Array.isArray(res.headers['server']) ? res.headers['server'][0] : res.headers['server'];
+                if (res.headers['x-powered-by']) headers['X-Powered-By'] = Array.isArray(res.headers['x-powered-by']) ? res.headers['x-powered-by'][0] : res.headers['x-powered-by'];
+                if (res.headers['strict-transport-security']) headers['HSTS'] = 'Yes';
+
+                if (Object.keys(headers).length > 0) {
+                    result.server.headers = headers;
+                }
+                resolve();
+            });
+
+            req.on('error', () => resolve());
+            req.on('timeout', () => { req.destroy(); resolve(); });
+            req.end();
+        });
+    } catch (e) {
+        // Header check failed
     }
 
     return result;

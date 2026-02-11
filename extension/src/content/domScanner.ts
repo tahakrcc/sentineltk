@@ -5,7 +5,7 @@ import type { ContactInfo } from '../shared/types';
  * Scan for fake trust badges (SSL Secure, Verified, etc.)
  * Validates against actual page context — not just text presence.
  */
-export function scanForFakeBadges(): { hasFakeBadge: boolean; fakeBadgeCount: number } {
+export function scanForFakeBadges(): { hasFakeBadge: boolean; fakeBadgeCount: number; fakeBadgeNames: string[] } {
     const badgeKeywords = [
         'verified', 'secure', 'trusted', 'güvenli', 'doğrulanmış', 'onaylanmış',
         'ssl secure', 'norton secured', 'mcafee secure', '3d secure', 'verified by visa',
@@ -13,6 +13,7 @@ export function scanForFakeBadges(): { hasFakeBadge: boolean; fakeBadgeCount: nu
     ];
 
     let fakeBadgeCount = 0;
+    const fakeBadgeNames: string[] = [];
 
     // Check images
     const images = document.querySelectorAll('img');
@@ -28,6 +29,7 @@ export function scanForFakeBadges(): { hasFakeBadge: boolean; fakeBadgeCount: nu
                     || href.includes('ssl.com') || href.includes('comodo.com');
                 if (!isReal) {
                     fakeBadgeCount++;
+                    fakeBadgeNames.push(kw);
                 }
                 break;
             }
@@ -42,13 +44,14 @@ export function scanForFakeBadges(): { hasFakeBadge: boolean; fakeBadgeCount: nu
             for (const kw of badgeKeywords) {
                 if (txt.includes(kw) && (txt.includes('✓') || txt.includes('✔') || txt.includes('🔒') || txt.includes('🛡'))) {
                     fakeBadgeCount++;
+                    fakeBadgeNames.push(kw);
                     break;
                 }
             }
         }
     });
 
-    return { hasFakeBadge: fakeBadgeCount > 0, fakeBadgeCount };
+    return { hasFakeBadge: fakeBadgeCount > 0, fakeBadgeCount, fakeBadgeNames: [...new Set(fakeBadgeNames)] };
 }
 
 /**
@@ -56,7 +59,7 @@ export function scanForFakeBadges(): { hasFakeBadge: boolean; fakeBadgeCount: nu
  * Fix #4: Removed overly broad words like "derhal"
  * Fix #8: Excludes text inside <article>, <main> tags (news content)
  */
-export function scanForUrgencyText(): { hasUrgencyText: boolean; urgencyScore: number } {
+export function scanForUrgencyText(): { hasUrgencyText: boolean; urgencyScore: number; urgencyKeywords: string[] } {
     // Fix #8: Get page text EXCLUDING news article content
     const bodyText = getTextExcludingArticles();
 
@@ -89,7 +92,7 @@ export function scanForUrgencyText(): { hasUrgencyText: boolean; urgencyScore: n
         }
     }
 
-    return { hasUrgencyText: urgencyScore >= 2, urgencyScore };
+    return { hasUrgencyText: urgencyScore >= 2, urgencyScore, urgencyKeywords: [] }; // MVP: Not extracting keywords yet to avoid clutter, can add later
 }
 
 /**

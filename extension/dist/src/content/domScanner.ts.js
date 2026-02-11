@@ -15,6 +15,7 @@ export function scanForFakeBadges() {
     "güvenli alışveriş"
   ];
   let fakeBadgeCount = 0;
+  const fakeBadgeNames = [];
   const images = document.querySelectorAll("img");
   images.forEach((img) => {
     const text = (img.alt + " " + img.src + " " + img.title).toLowerCase();
@@ -25,6 +26,7 @@ export function scanForFakeBadges() {
         const isReal = href.includes("norton.com") || href.includes("mcafee.com") || href.includes("visa.com") || href.includes("mastercard.com") || href.includes("ssl.com") || href.includes("comodo.com");
         if (!isReal) {
           fakeBadgeCount++;
+          fakeBadgeNames.push(kw);
         }
         break;
       }
@@ -37,12 +39,13 @@ export function scanForFakeBadges() {
       for (const kw of badgeKeywords) {
         if (txt.includes(kw) && (txt.includes("✓") || txt.includes("✔") || txt.includes("🔒") || txt.includes("🛡"))) {
           fakeBadgeCount++;
+          fakeBadgeNames.push(kw);
           break;
         }
       }
     }
   });
-  return { hasFakeBadge: fakeBadgeCount > 0, fakeBadgeCount };
+  return { hasFakeBadge: fakeBadgeCount > 0, fakeBadgeCount, fakeBadgeNames: [...new Set(fakeBadgeNames)] };
 }
 export function scanForUrgencyText() {
   const bodyText = getTextExcludingArticles();
@@ -73,7 +76,7 @@ export function scanForUrgencyText() {
       urgencyScore++;
     }
   }
-  return { hasUrgencyText: urgencyScore >= 2, urgencyScore };
+  return { hasUrgencyText: urgencyScore >= 2, urgencyScore, urgencyKeywords: [] };
 }
 function getTextExcludingArticles() {
   const clone = document.body?.cloneNode(true);

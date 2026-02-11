@@ -6,8 +6,10 @@ export interface PageSignals {
     sensitiveInputTypes: string[];
     hasFakeBadge: boolean;
     fakeBadgeCount: number;
+    fakeBadgeNames: string[];
     hasUrgencyText: boolean;
     urgencyScore: number;
+    urgencyKeywords: string[];
     hasCountdownTimer: boolean;
     hasPopupSpam: boolean;
     hasScrollLock: boolean;
@@ -75,6 +77,7 @@ export interface TechnicalAnalysis {
     server: {
         ip?: string;
         location?: string;
+        headers?: Record<string, string>;
     };
 }
 
