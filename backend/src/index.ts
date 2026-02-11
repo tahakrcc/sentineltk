@@ -34,8 +34,6 @@ app.get('/', (_req, res) => {
     });
 });
 
-const HOST = process.env.RAILWAY_ENVIRONMENT ? '0.0.0.0' : '127.0.0.1';
-
-app.listen(PORT, HOST, () => {
-    console.log(`SentinelTK Backend running on http://${HOST}:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`SentinelTK Backend running on http://0.0.0.0:${PORT}`);
 });
