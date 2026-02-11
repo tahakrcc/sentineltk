@@ -114,7 +114,8 @@ chrome.webNavigation.onCommitted.addListener(async (details) => {
 // ═══════════════════════════════════════════════════════════════
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    const tabId = sender.tab?.id;
+    // tabId from sender (content script) or from message (popup)
+    const tabId = sender.tab?.id || message.tabId;
 
     switch (message.type) {
         case 'PAGE_SIGNALS':
