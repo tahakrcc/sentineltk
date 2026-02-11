@@ -1,6 +1,6 @@
 // ─── Background Service Worker (Full Implementation) ────────────
 import type { PageSignals, TabState, RiskAction } from '../shared/types';
-import { SCORE_SAFE_MAX, SCORE_SUSPICIOUS_MAX } from '../shared/constants';
+import { SCORE_SAFE_MAX, SCORE_SUSPICIOUS_MAX, BACKEND_URL } from '../shared/constants';
 import { RiskEngine } from './riskEngine';
 import { RuleManager } from './ruleManager';
 import { StorageManager } from './storage';
@@ -235,7 +235,7 @@ function sendToTab(tabId: number, message: { type: string; action: RiskAction; s
 
 async function reportSite(domain: string, reason: string) {
     try {
-        await fetch('http://127.0.0.1:3000/api/v1/report', {
+        await fetch(`${BACKEND_URL}/report`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ domain, reason }),

@@ -1,4 +1,4 @@
-export const BACKEND_URL = "http://127.0.0.1:3000/api/v1";
+export const BACKEND_URL = "https://sentineltk-production.up.railway.app/api/v1";
 export const SCORE_SAFE_MAX = 39;
 export const SCORE_SUSPICIOUS_MAX = 69;
 export const WEIGHTS = {

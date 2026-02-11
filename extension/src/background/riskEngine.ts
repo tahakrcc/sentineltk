@@ -1,6 +1,6 @@
 // ─── Full Risk Scoring Engine ────────────────────────────────────
-import type { ScoreResult, ScoreFactor, PageSignals, SSLState } from '../shared/types';
-import { WEIGHTS, FP_MITIGATION, TOP_DOMAINS, SCORE_SAFE_MAX, SCORE_SUSPICIOUS_MAX } from '../shared/constants';
+import type { ScoreResult, ScoreFactor, PageSignals } from '../shared/types';
+import { WEIGHTS, TOP_DOMAINS, SCORE_SAFE_MAX, SCORE_SUSPICIOUS_MAX, BACKEND_URL } from '../shared/constants';
 import { levenshtein, clamp, getBaseDomain } from '../shared/utils';
 import { StorageManager } from './storage';
 
@@ -174,7 +174,7 @@ export class RiskEngine {
      */
     private async fetchBackendScore(domain: string): Promise<{ score: number } | null> {
         try {
-            const resp = await fetch('http://127.0.0.1:3000/api/v1/score', {
+            const resp = await fetch(`${BACKEND_URL}/score`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ domain }),
