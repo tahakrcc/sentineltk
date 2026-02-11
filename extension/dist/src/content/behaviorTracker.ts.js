@@ -1,3 +1,4 @@
+import { COOKIE_CONSENT_PATTERNS } from "/src/shared/constants.ts.js";
 export function detectBehavioralSignals() {
   const signals = {
     hasRightClickBlock: false,
@@ -25,14 +26,14 @@ export function detectBehavioralSignals() {
     scripts.forEach((s) => {
       const code = s.textContent || "";
       if (code.includes("onbeforeunload") || code.includes("beforeunload")) {
-        if (code.includes("returnValue") || code.includes("Are you sure") || code.includes("Emin misiniz")) {
+        const isAggressive = code.includes("history.pushState") && code.includes("popstate") || // Back button hijacking
+        code.includes("window.open") && code.includes("beforeunload") || // Open popup on leave
+        code.includes("location.href") && code.includes("beforeunload");
+        if (isAggressive) {
           signals.hasFocusTrap = true;
         }
       }
     });
-    if (document.body?.getAttribute("onbeforeunload")) {
-      signals.hasFocusTrap = true;
-    }
   } catch {
   }
   try {
@@ -53,7 +54,15 @@ export function detectBehavioralSignals() {
     const htmlStyle = window.getComputedStyle(document.documentElement);
     if (bodyStyle.overflow === "hidden" || htmlStyle.overflow === "hidden") {
       const overlays = document.querySelectorAll('div[style*="position: fixed"], div[style*="position:fixed"]');
-      if (overlays.length > 0) {
+      let isCookieConsent = false;
+      overlays.forEach((overlay) => {
+        const el = overlay;
+        const combined = (el.id + " " + el.className + " " + el.getAttribute("aria-label")).toLowerCase();
+        if (COOKIE_CONSENT_PATTERNS.some((pat) => combined.includes(pat))) {
+          isCookieConsent = true;
+        }
+      });
+      if (overlays.length > 0 && !isCookieConsent) {
         signals.hasScrollLock = true;
       }
     }

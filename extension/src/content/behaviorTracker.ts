@@ -1,4 +1,5 @@
 // ─── Behavior Tracker ───────────────────────────────────────────
+import { COOKIE_CONSENT_PATTERNS } from '../shared/constants';
 
 export interface BehaviorSignals {
     hasRightClickBlock: boolean;
@@ -27,7 +28,6 @@ export function detectBehavioralSignals(): BehaviorSignals {
         if (bodyAttrs.includes('return false') || bodyAttrs.includes('preventDefault')) {
             signals.hasRightClickBlock = true;
         }
-        // Also check inline scripts
         const scripts = document.querySelectorAll('script:not([src])');
         scripts.forEach(s => {
             const code = s.textContent || '';
@@ -37,22 +37,22 @@ export function detectBehavioralSignals(): BehaviorSignals {
         });
     } catch { /* ignore */ }
 
-    // 2. Focus trap detection (beforeunload / onbeforeunload)
+    // Fix #3: Focus trap detection — only flag aggressive patterns, not normal beforeunload
     try {
         const scripts = document.querySelectorAll('script:not([src])');
         scripts.forEach(s => {
             const code = s.textContent || '';
             if (code.includes('onbeforeunload') || code.includes('beforeunload')) {
-                // Check if it shows a confirmation dialog
-                if (code.includes('returnValue') || code.includes('Are you sure') || code.includes('Emin misiniz')) {
+                // Only flag if it's aggressive (not a simple "unsaved changes" dialog)
+                const isAggressive =
+                    (code.includes('history.pushState') && code.includes('popstate')) || // Back button hijacking
+                    (code.includes('window.open') && code.includes('beforeunload')) ||   // Open popup on leave
+                    code.includes('location.href') && code.includes('beforeunload');     // Redirect on leave
+                if (isAggressive) {
                     signals.hasFocusTrap = true;
                 }
             }
         });
-        // Check body attribute
-        if (document.body?.getAttribute('onbeforeunload')) {
-            signals.hasFocusTrap = true;
-        }
     } catch { /* ignore */ }
 
     // 3. Popup spam (multiple window.open calls in scripts)
@@ -69,14 +69,23 @@ export function detectBehavioralSignals(): BehaviorSignals {
         }
     } catch { /* ignore */ }
 
-    // 4. Scroll lock
+    // Fix #2: Scroll lock — exclude cookie consent / KVKK banners
     try {
         const bodyStyle = window.getComputedStyle(document.body);
         const htmlStyle = window.getComputedStyle(document.documentElement);
         if (bodyStyle.overflow === 'hidden' || htmlStyle.overflow === 'hidden') {
-            // Check if there's a modal-like overlay
             const overlays = document.querySelectorAll('div[style*="position: fixed"], div[style*="position:fixed"]');
-            if (overlays.length > 0) {
+            let isCookieConsent = false;
+
+            overlays.forEach(overlay => {
+                const el = overlay as HTMLElement;
+                const combined = (el.id + ' ' + el.className + ' ' + el.getAttribute('aria-label')).toLowerCase();
+                if (COOKIE_CONSENT_PATTERNS.some(pat => combined.includes(pat))) {
+                    isCookieConsent = true;
+                }
+            });
+
+            if (overlays.length > 0 && !isCookieConsent) {
                 signals.hasScrollLock = true;
             }
         }

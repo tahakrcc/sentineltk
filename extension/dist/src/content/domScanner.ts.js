@@ -45,7 +45,7 @@ export function scanForFakeBadges() {
   return { hasFakeBadge: fakeBadgeCount > 0, fakeBadgeCount };
 }
 export function scanForUrgencyText() {
-  const bodyText = document.body?.innerText?.toLowerCase() || "";
+  const bodyText = getTextExcludingArticles();
   const urgencyPatterns = [
     // English
     /your account (has been|will be) (suspended|closed|limited)/i,
@@ -57,7 +57,7 @@ export function scanForUrgencyText() {
     /last chance/i,
     /security alert/i,
     /click (here|now) to/i,
-    // Turkish
+    // Turkish — Fix #4: removed /derhal/i (too broad for news)
     /hesabınız (kapatılacak|kısıtlandı|askıya alındı)/i,
     /yetkisiz (erişim|işlem)/i,
     /kimliğinizi doğrulayın/i,
@@ -65,8 +65,7 @@ export function scanForUrgencyText() {
     /son şans/i,
     /acil (işlem|güncelleme)/i,
     /güvenlik uyarısı/i,
-    /hemen tıklayın/i,
-    /derhal/i
+    /hemen tıklayın/i
   ];
   let urgencyScore = 0;
   for (const pattern of urgencyPatterns) {
@@ -75,6 +74,13 @@ export function scanForUrgencyText() {
     }
   }
   return { hasUrgencyText: urgencyScore >= 2, urgencyScore };
+}
+function getTextExcludingArticles() {
+  const clone = document.body?.cloneNode(true);
+  if (!clone) return "";
+  const articles = clone.querySelectorAll('article, [role="article"], main, .article-body, .post-content, .entry-content');
+  articles.forEach((el) => el.remove());
+  return clone.innerText?.toLowerCase() || "";
 }
 export function scanForCountdownTimers() {
   const timePatterns = /\d{1,2}\s*:\s*\d{2}\s*:\s*\d{2}|\d{1,2}\s*(saat|hour|min|dk|saniye|sec)/i;
@@ -103,6 +109,8 @@ export function scanContactInfo() {
   const whatsappLinks = [...new Set(bodyHtml.match(waRegex) || [])];
   const freeEmailProviders = ["gmail.com", "hotmail.com", "yahoo.com", "outlook.com", "yandex.com"];
   const hasFreeEmail = emails.some((e) => freeEmailProviders.some((p) => e.endsWith(p)));
+  const hasNoProperContact = phones.length === 0 && whatsappLinks.length === 0;
+  const suspicious = hasFreeEmail && hasNoProperContact && emails.length > 0;
   const hostname = window.location.hostname;
   const isTR = hostname.endsWith(".tr") || hostname.includes(".com.tr");
   const hasNonTRPhone = phones.some((p) => {
@@ -114,7 +122,7 @@ export function scanContactInfo() {
     phones,
     emails,
     whatsappLinks,
-    suspicious: hasFreeEmail && emails.length > 0,
+    suspicious,
     countryMismatch
   };
 }

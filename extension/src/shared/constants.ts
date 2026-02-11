@@ -20,6 +20,7 @@ export const WEIGHTS = {
     RAPID_REDIRECT: 15,
     SUBDOMAIN_DEPTH: 8,
     SUSPICIOUS_KEYWORD: 5,
+    HOMOGRAPH: 15,        // Fix #5: Unicode/homograph saldırısı
 
     // Content signals (40% of total)
     FAKE_BADGE: 25,
@@ -34,12 +35,12 @@ export const WEIGHTS = {
     COUNTDOWN_TIMER: 10,
     RIGHT_CLICK_BLOCK: 8,
     PASTE_BLOCK: 5,
-    FOCUS_TRAP: 15,
+    FOCUS_TRAP: 5,    // Fix #3: 15→5 (beforeunload meşru kullanım çok)
     POPUP_SPAM: 10,
     SCROLL_LOCK: 8,
 
     // Contact
-    FAKE_CONTACT: 10,
+    FAKE_CONTACT: 3,  // Fix #9: 10→3 (Gmail kullanan küçük işletmeler)
     COUNTRY_MISMATCH: 8,
 } as const;
 
@@ -49,6 +50,7 @@ export const FP_MITIGATION = {
     OV_EV_REDUCTION: -20,
     FREQUENT_VISIT_REDUCTION: -15,
     FREQUENT_VISIT_THRESHOLD: 5,
+    TR_TLD_BONUS: -5,  // Fix #13: .com.tr / .gov.tr güven bonusu
 } as const;
 
 // Debounce timings
@@ -56,7 +58,7 @@ export const DEBOUNCE_DOM_SCAN_MS = 300;
 export const DEBOUNCE_SIGNAL_SEND_MS = 500;
 
 // Cache durations
-export const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24h
+export const CACHE_DURATION_MS = 4 * 60 * 60 * 1000; // Fix #12: 24h→4h (cache poisoning önlemi)
 
 // Sensitive field patterns
 export const SENSITIVE_PATTERNS = {
@@ -69,11 +71,11 @@ export const SENSITIVE_PATTERNS = {
     PHONE: /phone|telefon|gsm|cep/i,
 } as const;
 
-// Urgency words (Turkish + English)
+// Urgency words (Turkish + English) — Fix #4: "derhal" kaldırıldı (çok geniş)
 export const URGENCY_WORDS_TR = [
     'hemen', 'acil', 'süre doluyor', 'son şans', 'hesabınız kapatılacak',
     'güvenlik uyarısı', 'doğrulama gerekli', 'hesabınız kısıtlandı',
-    'derhal', 'yetkisiz erişim', 'şimdi tıklayın', 'kaçırmayın',
+    'yetkisiz erişim', 'şimdi tıklayın', 'kaçırmayın',
 ];
 
 export const URGENCY_WORDS_EN = [
@@ -97,7 +99,7 @@ export const TOP_DOMAINS = [
     'binance.com', 'btcturk.com', 'paribu.com',
 ];
 
-// Trusted domains that ALWAYS get score 0 (no analysis needed)
+// Fix #1: Trusted domains — hosting subdomainleri HARİÇ
 export const TRUSTED_DOMAINS = [
     'google.com', 'google.com.tr', 'youtube.com', 'facebook.com', 'twitter.com',
     'instagram.com', 'linkedin.com', 'amazon.com', 'apple.com', 'microsoft.com',
@@ -108,4 +110,28 @@ export const TRUSTED_DOMAINS = [
     'ziraatbank.com.tr', 'halkbank.com.tr', 'vakifbank.com.tr',
     'turkiye.gov.tr', 'e-devlet.gov.tr', 'ptt.gov.tr',
     'trendyol.com', 'hepsiburada.com', 'n11.com', 'sahibinden.com',
+];
+
+// Fix #1: Hosting subdomainleri — trusted olsa bile taranmalı
+export const UNTRUSTED_SUBDOMAINS = [
+    'sites.google.com',
+    'docs.google.com/forms',
+    'pages.github.io',
+    'github.io',
+    'netlify.app',
+    'vercel.app',
+    'herokuapp.com',
+    'web.app',       // Firebase hosting
+    'firebaseapp.com',
+    'blogspot.com',
+    'wordpress.com',
+    'wixsite.com',
+    'weebly.com',
+];
+
+// Fix #2: Cookie consent class/id patterns — scroll lock'tan hariç tut
+export const COOKIE_CONSENT_PATTERNS = [
+    'cookie', 'consent', 'gdpr', 'kvkk', 'privacy', 'onetrust',
+    'cookiebot', 'cc-window', 'cc-banner', 'cookie-notice',
+    'cookie-law', 'cookie-bar', 'cookie-popup', 'cerez',
 ];

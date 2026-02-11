@@ -1,6 +1,6 @@
 // ─── Full Risk Scoring Engine ────────────────────────────────────
 import type { ScoreResult, ScoreFactor, PageSignals } from '../shared/types';
-import { WEIGHTS, TOP_DOMAINS, TRUSTED_DOMAINS, SCORE_SAFE_MAX, SCORE_SUSPICIOUS_MAX, BACKEND_URL } from '../shared/constants';
+import { WEIGHTS, TOP_DOMAINS, TRUSTED_DOMAINS, UNTRUSTED_SUBDOMAINS, FP_MITIGATION, SCORE_SAFE_MAX, SCORE_SUSPICIOUS_MAX, BACKEND_URL } from '../shared/constants';
 import { levenshtein, clamp, getBaseDomain } from '../shared/utils';
 import { StorageManager } from './storage';
 
@@ -15,9 +15,20 @@ export class RiskEngine {
         const factors: ScoreFactor[] = [];
         let rawScore = 0;
 
-        // 0. Trusted domain check (Google, YouTube, banks etc.)
-        if (TRUSTED_DOMAINS.some(td => domain === td || domain.endsWith('.' + td))) {
+        // Fix #1: Untrusted subdomains check FIRST (sites.google.com etc.)
+        const isUntrustedHosting = UNTRUSTED_SUBDOMAINS.some(
+            us => hostname === us || hostname.endsWith('.' + us) || hostname.includes(us)
+        );
+
+        // 0. Trusted domain check (but NOT hosting subdomains)
+        if (!isUntrustedHosting && TRUSTED_DOMAINS.some(td => domain === td || domain.endsWith('.' + td))) {
             return this.buildResult(0, [{ signal: 'trusted_domain', weight: 0, description: 'Güvenilir site (bilinen domain)' }]);
+        }
+
+        // If it IS an untrusted hosting subdomain, add a note
+        if (isUntrustedHosting) {
+            rawScore += 10;
+            factors.push({ signal: 'hosting_subdomain', weight: 10, description: 'Ücretsiz hosting servisi (dikkatli olun)' });
         }
 
         // 1. Whitelist check
@@ -33,7 +44,7 @@ export class RiskEngine {
         }
 
         // 3. Suspicious keywords in domain
-        const suspiciousKeywords = ['login', 'verify', 'secure', 'update', 'confirm', 'account', 'banking', 'doğrula', 'giriş'];
+        const suspiciousKeywords = ['login', 'verify', 'secure', 'update', 'confirm', 'account', 'banking', 'doğrula', 'giriş', 'guvenlik', 'dogrulama'];
         for (const kw of suspiciousKeywords) {
             if (domain.includes(kw)) {
                 rawScore += WEIGHTS.SUSPICIOUS_KEYWORD;
@@ -47,6 +58,12 @@ export class RiskEngine {
         if (typoResult) {
             rawScore += WEIGHTS.TYPOSQUAT;
             factors.push({ signal: 'typosquat', weight: WEIGHTS.TYPOSQUAT, description: `"${typoResult}" alan adına çok benzer (typosquatting)` });
+        }
+
+        // Fix #5: Homograph/Unicode detection
+        if (this.hasHomographChars(hostname)) {
+            rawScore += WEIGHTS.HOMOGRAPH;
+            factors.push({ signal: 'homograph', weight: WEIGHTS.HOMOGRAPH, description: 'Unicode/homograph saldırısı şüphesi (sahte karakterler)' });
         }
 
         // 5. Try backend API for domain reputation
@@ -65,6 +82,12 @@ export class RiskEngine {
         if (visitReduction < 0) {
             rawScore += visitReduction;
             factors.push({ signal: 'frequent_visitor', weight: visitReduction, description: 'Sık ziyaret edilen site' });
+        }
+
+        // Fix #13: .com.tr / .gov.tr trust bonus
+        if (domain.endsWith('.com.tr') || domain.endsWith('.gov.tr') || domain.endsWith('.edu.tr') || domain.endsWith('.org.tr')) {
+            rawScore += FP_MITIGATION.TR_TLD_BONUS;
+            factors.push({ signal: 'tr_tld_bonus', weight: FP_MITIGATION.TR_TLD_BONUS, description: '.tr TLD güven bonusu (kayıt doğrulamalı)' });
         }
 
         return this.buildResult(clamp(rawScore, 0, 100), factors);
@@ -93,7 +116,7 @@ export class RiskEngine {
                 rawScore += WEIGHTS.SENSITIVE_INPUT_ID;
                 factors.push({ signal: 'sensitive_id', weight: WEIGHTS.SENSITIVE_INPUT_ID, description: 'TC Kimlik / Kimlik No girişi tespit edildi' });
             }
-            if (types.includes('password')) {
+            if (types.includes('password') && WEIGHTS.SENSITIVE_INPUT_PASS > 0) {
                 rawScore += WEIGHTS.SENSITIVE_INPUT_PASS;
                 factors.push({ signal: 'sensitive_pass', weight: WEIGHTS.SENSITIVE_INPUT_PASS, description: 'Şifre girişi tespit edildi' });
             }
@@ -106,9 +129,10 @@ export class RiskEngine {
             factors.push({ signal: 'urgency_text', weight: urgencyWeight, description: 'Aciliyet / tehdit dili tespit edildi' });
         }
 
-        if (signals.hasCountdownTimer) {
+        // Fix #10: Countdown timer only counts if OTHER scam signals present
+        if (signals.hasCountdownTimer && rawScore >= 15) {
             rawScore += WEIGHTS.COUNTDOWN_TIMER;
-            factors.push({ signal: 'countdown', weight: WEIGHTS.COUNTDOWN_TIMER, description: 'Sahte geri sayım sayacı tespit edildi' });
+            factors.push({ signal: 'countdown', weight: WEIGHTS.COUNTDOWN_TIMER, description: 'Şüpheli geri sayım sayacı tespit edildi' });
         }
 
         if (signals.hasRightClickBlock) {
@@ -136,7 +160,7 @@ export class RiskEngine {
             factors.push({ signal: 'paste_block', weight: WEIGHTS.PASTE_BLOCK, description: 'Yapıştırma engeli tespit edildi' });
         }
 
-        // ── Redirect Signals ──
+        // ── Redirect Signals ── Fix #11
         if (signals.rapidRedirect) {
             rawScore += WEIGHTS.RAPID_REDIRECT;
             factors.push({ signal: 'rapid_redirect', weight: WEIGHTS.RAPID_REDIRECT, description: 'Hızlı yönlendirme tespit edildi' });
@@ -150,7 +174,7 @@ export class RiskEngine {
         // ── Contact Info Signals ──
         if (signals.contactInfo?.suspicious) {
             rawScore += WEIGHTS.FAKE_CONTACT;
-            factors.push({ signal: 'fake_contact', weight: WEIGHTS.FAKE_CONTACT, description: 'Şüpheli iletişim bilgisi tespit edildi' });
+            factors.push({ signal: 'fake_contact', weight: WEIGHTS.FAKE_CONTACT, description: 'Ücretsiz e-posta iletişim adresi' });
         }
         if (signals.contactInfo?.countryMismatch) {
             rawScore += WEIGHTS.COUNTRY_MISMATCH;
@@ -172,6 +196,32 @@ export class RiskEngine {
             if (dist > 0 && dist <= 2) return top;
         }
         return null;
+    }
+
+    /**
+     * Fix #5: Detect homograph/IDN attacks (Punycode domains with unicode lookalikes).
+     */
+    private hasHomographChars(hostname: string): boolean {
+        // Check for Punycode (xn--) prefixed labels
+        if (hostname.includes('xn--')) return true;
+
+        // Check for non-ASCII characters in hostname
+        // eslint-disable-next-line no-control-regex
+        const nonAscii = /[^\x00-\x7F]/;
+        if (nonAscii.test(hostname)) return true;
+
+        // Common lookalike substitutions: 0↔o, 1↔l, rn↔m
+        const base = hostname.split('.')[0];
+        if (/[0-9]/.test(base)) {
+            // Check if replacing digits gives a known domain
+            const normalized = base.replace(/0/g, 'o').replace(/1/g, 'l').replace(/3/g, 'e').replace(/5/g, 's');
+            for (const top of TOP_DOMAINS) {
+                const topBase = top.split('.')[0];
+                if (normalized === topBase && base !== topBase) return true;
+            }
+        }
+
+        return false;
     }
 
     /**

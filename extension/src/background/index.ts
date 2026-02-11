@@ -23,6 +23,20 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
     redirectCounters.set(details.tabId, { count: 0, startTime: Date.now() });
 });
 
+// Fix #11: Track actual HTTP redirects (301, 302, etc.)
+chrome.webNavigation.onCompleted.addListener((details) => {
+    if (details.frameId !== 0) return;
+    const redirectData = redirectCounters.get(details.tabId);
+    if (redirectData && redirectData.count > 2) {
+        const state = storage.getTabState(details.tabId);
+        if (state) {
+            state.signals.redirectCount = redirectData.count;
+            state.signals.rapidRedirect = (Date.now() - redirectData.startTime) < 3000;
+            storage.setTabState(details.tabId, state);
+        }
+    }
+});
+
 chrome.webNavigation.onCommitted.addListener(async (details) => {
     if (details.frameId !== 0) return;
     if (details.url.startsWith('chrome://') || details.url.startsWith('chrome-extension://')) return;

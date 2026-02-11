@@ -53,9 +53,12 @@ export function scanForFakeBadges(): { hasFakeBadge: boolean; fakeBadgeCount: nu
 
 /**
  * Scan for urgency / threat language.
+ * Fix #4: Removed overly broad words like "derhal"
+ * Fix #8: Excludes text inside <article>, <main> tags (news content)
  */
 export function scanForUrgencyText(): { hasUrgencyText: boolean; urgencyScore: number } {
-    const bodyText = document.body?.innerText?.toLowerCase() || '';
+    // Fix #8: Get page text EXCLUDING news article content
+    const bodyText = getTextExcludingArticles();
 
     const urgencyPatterns = [
         // English
@@ -68,7 +71,7 @@ export function scanForUrgencyText(): { hasUrgencyText: boolean; urgencyScore: n
         /last chance/i,
         /security alert/i,
         /click (here|now) to/i,
-        // Turkish
+        // Turkish — Fix #4: removed /derhal/i (too broad for news)
         /hesabınız (kapatılacak|kısıtlandı|askıya alındı)/i,
         /yetkisiz (erişim|işlem)/i,
         /kimliğinizi doğrulayın/i,
@@ -77,7 +80,6 @@ export function scanForUrgencyText(): { hasUrgencyText: boolean; urgencyScore: n
         /acil (işlem|güncelleme)/i,
         /güvenlik uyarısı/i,
         /hemen tıklayın/i,
-        /derhal/i,
     ];
 
     let urgencyScore = 0;
@@ -91,15 +93,29 @@ export function scanForUrgencyText(): { hasUrgencyText: boolean; urgencyScore: n
 }
 
 /**
+ * Fix #8: Get page text but exclude <article> and <main> content
+ * to avoid false positives from news articles about scams.
+ */
+function getTextExcludingArticles(): string {
+    // Clone body to manipulate
+    const clone = document.body?.cloneNode(true) as HTMLElement;
+    if (!clone) return '';
+
+    // Remove article/news content
+    const articles = clone.querySelectorAll('article, [role="article"], main, .article-body, .post-content, .entry-content');
+    articles.forEach(el => el.remove());
+
+    return clone.innerText?.toLowerCase() || '';
+}
+
+/**
  * Detect fake countdown timers.
  */
 export function scanForCountdownTimers(): boolean {
-    // Look for elements that update every second (likely countdown timers)
     const timePatterns = /\d{1,2}\s*:\s*\d{2}\s*:\s*\d{2}|\d{1,2}\s*(saat|hour|min|dk|saniye|sec)/i;
     const bodyText = document.body?.innerText || '';
 
     if (timePatterns.test(bodyText)) {
-        // Check for setInterval patterns in inline scripts
         const scripts = document.querySelectorAll('script:not([src])');
         let hasIntervalTimer = false;
         scripts.forEach(s => {
@@ -116,6 +132,7 @@ export function scanForCountdownTimers(): boolean {
 
 /**
  * Extract and analyze contact information.
+ * Fix #9: Free email detection less aggressive
  */
 export function scanContactInfo(): ContactInfo {
     const bodyText = document.body?.innerText || '';
@@ -133,16 +150,18 @@ export function scanContactInfo(): ContactInfo {
     const waRegex = /wa\.me\/\d+|api\.whatsapp\.com\/send\?phone=\d+/g;
     const whatsappLinks = [...new Set(bodyHtml.match(waRegex) || [])];
 
-    // Suspicious: free email providers used for "business" contact
+    // Fix #9: Only flag free email if it's the ONLY contact method and site looks commercial
     const freeEmailProviders = ['gmail.com', 'hotmail.com', 'yahoo.com', 'outlook.com', 'yandex.com'];
     const hasFreeEmail = emails.some(e => freeEmailProviders.some(p => e.endsWith(p)));
+    const hasNoProperContact = phones.length === 0 && whatsappLinks.length === 0;
+    const suspicious = hasFreeEmail && hasNoProperContact && emails.length > 0;
 
     // Country mismatch: check if phone country code doesn't match TLD
     const hostname = window.location.hostname;
     const isTR = hostname.endsWith('.tr') || hostname.includes('.com.tr');
     const hasNonTRPhone = phones.some(p => {
         const digits = p.replace(/\D/g, '');
-        return digits.startsWith('1') || digits.startsWith('44') || digits.startsWith('91'); // US/UK/India
+        return digits.startsWith('1') || digits.startsWith('44') || digits.startsWith('91');
     });
     const countryMismatch = isTR && hasNonTRPhone;
 
@@ -150,13 +169,13 @@ export function scanContactInfo(): ContactInfo {
         phones,
         emails,
         whatsappLinks,
-        suspicious: hasFreeEmail && emails.length > 0,
+        suspicious,
         countryMismatch,
     };
 }
 
 /**
- * Generate a structural fingerprint hash of the page (CSS/HTML structure).
+ * Generate a structural fingerprint hash of the page.
  */
 export function generateFingerprint(): string {
     const elements = document.querySelectorAll('div, form, input, button, a, img, iframe');
@@ -164,7 +183,6 @@ export function generateFingerprint(): string {
         return `${el.tagName}:${el.className?.toString().slice(0, 20) || ''}`;
     }).join('|');
 
-    // Simple hash (not crypto - just for fingerprinting)
     let hash = 0;
     for (let i = 0; i < structure.length; i++) {
         const chr = structure.charCodeAt(i);
