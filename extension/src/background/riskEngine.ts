@@ -101,12 +101,33 @@ export class RiskEngine {
         return this.buildResult(clamp(rawScore, 0, 100), factors);
     }
 
+
     /**
      * Recalculate risk with page-level signals from content script.
      */
     recalculateWithSignals(currentScore: ScoreResult, signals: Partial<PageSignals>): ScoreResult {
-        let rawScore = currentScore.score;
-        const factors = [...currentScore.factors];
+        // Fix duplication: Remove all previous content-based signals before adding new ones
+        const contentSignals = new Set([
+            'fake_badge', 'sensitive_cc', 'sensitive_id', 'sensitive_pass',
+            'urgency_text', 'countdown', 'right_click_block', 'focus_trap',
+            'popup_spam', 'scroll_lock', 'paste_block', 'rapid_redirect',
+            'redirect_chain', 'fake_contact', 'country_mismatch'
+        ]);
+
+        let factors = currentScore.factors.filter(f => !contentSignals.has(f.signal));
+
+        // IMPORTANT: Calculate base score from remaining factors (domain-level only)
+        // This prevents score inflation from previous runs
+        let rawScore = factors.reduce((sum, f) => sum + f.weight, 0);
+
+        // Fix False Positives: If domain is TRUSTED or WHITELISTED, ignore content noise
+        // (Google, Amazon etc. use urgency/badges legitimatey)
+        const isTrusted = factors.some(f => f.signal === 'trusted_domain' || f.signal === 'whitelisted');
+        if (isTrusted) {
+            // Only allow critical technical signals for trusted domains (like redirections if extreme)
+            // But generally, trust overrides content heuristics
+            return this.buildResult(rawScore, factors);
+        }
 
         // ── Content Signals ──
         if (signals.hasFakeBadge) {
