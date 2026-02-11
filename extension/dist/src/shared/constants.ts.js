@@ -14,9 +14,12 @@ export const WEIGHTS = {
   SUSPICIOUS_KEYWORD: 5,
   // Content signals (40% of total)
   FAKE_BADGE: 25,
-  SENSITIVE_INPUT_CC: 8,
-  SENSITIVE_INPUT_ID: 15,
-  SENSITIVE_INPUT_PASS: 5,
+  SENSITIVE_INPUT_CC: 3,
+  // Kart bilgisi normal (e-ticaret)
+  SENSITIVE_INPUT_ID: 10,
+  // TC Kimlik biraz şüpheli
+  SENSITIVE_INPUT_PASS: 0,
+  // Şifre alanı tamamen normal
   SCAM_LAYOUT_MATCH: 30,
   OFFSITE_FAVICON: 8,
   // Behavior signals (20% of total)
