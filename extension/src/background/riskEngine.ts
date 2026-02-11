@@ -16,9 +16,10 @@ export class RiskEngine {
         let rawScore = 0;
 
         // Fix #1: Untrusted subdomains check FIRST (sites.google.com etc.)
-        const isUntrustedHosting = UNTRUSTED_SUBDOMAINS.some(
+        const hostingMatch = UNTRUSTED_SUBDOMAINS.find(
             us => hostname === us || hostname.endsWith('.' + us) || hostname.includes(us)
         );
+        const isUntrustedHosting = !!hostingMatch;
 
         // 0. Trusted domain check (but NOT hosting subdomains)
         if (!isUntrustedHosting && TRUSTED_DOMAINS.some(td => domain === td || domain.endsWith('.' + td))) {
@@ -28,7 +29,7 @@ export class RiskEngine {
         // If it IS an untrusted hosting subdomain, add a note
         if (isUntrustedHosting) {
             rawScore += 10;
-            factors.push({ signal: 'hosting_subdomain', weight: 10, description: 'Ücretsiz hosting servisi (dikkatli olun)' });
+            factors.push({ signal: 'hosting_subdomain', weight: 10, description: `Ücretsiz hosting servisi: ${hostingMatch}` });
         }
 
         // 1. Whitelist check
@@ -61,9 +62,16 @@ export class RiskEngine {
         }
 
         // Fix #5: Homograph/Unicode detection
-        if (this.hasHomographChars(hostname)) {
+        const homographTarget = this.checkHomographAttack(hostname);
+        if (homographTarget) {
             rawScore += WEIGHTS.HOMOGRAPH;
-            factors.push({ signal: 'homograph', weight: WEIGHTS.HOMOGRAPH, description: 'Unicode/homograph saldırısı şüphesi (sahte karakterler)' });
+            factors.push({
+                signal: 'homograph',
+                weight: WEIGHTS.HOMOGRAPH,
+                description: homographTarget === 'UNKNOWN'
+                    ? 'Unicode/homograph saldırısı şüphesi (sahte karakterler)'
+                    : `Homograph saldırısı: "${homographTarget}" taklidi`
+            });
         }
 
         // 5. Try backend API for domain reputation
@@ -200,15 +208,16 @@ export class RiskEngine {
 
     /**
      * Fix #5: Detect homograph/IDN attacks (Punycode domains with unicode lookalikes).
+     * Returns the target domain if detected, 'UNKNOWN' if generic suspicious chars, or null if safe.
      */
-    private hasHomographChars(hostname: string): boolean {
+    private checkHomographAttack(hostname: string): string | null {
         // Check for Punycode (xn--) prefixed labels
-        if (hostname.includes('xn--')) return true;
+        if (hostname.includes('xn--')) return 'UNKNOWN';
 
         // Check for non-ASCII characters in hostname
         // eslint-disable-next-line no-control-regex
         const nonAscii = /[^\x00-\x7F]/;
-        if (nonAscii.test(hostname)) return true;
+        if (nonAscii.test(hostname)) return 'UNKNOWN';
 
         // Common lookalike substitutions: 0↔o, 1↔l, rn↔m
         const base = hostname.split('.')[0];
@@ -217,11 +226,11 @@ export class RiskEngine {
             const normalized = base.replace(/0/g, 'o').replace(/1/g, 'l').replace(/3/g, 'e').replace(/5/g, 's');
             for (const top of TOP_DOMAINS) {
                 const topBase = top.split('.')[0];
-                if (normalized === topBase && base !== topBase) return true;
+                if (normalized === topBase && base !== topBase) return top;
             }
         }
 
-        return false;
+        return null;
     }
 
     /**
