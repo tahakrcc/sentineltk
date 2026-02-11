@@ -1,6 +1,6 @@
 // ─── Full Risk Scoring Engine ────────────────────────────────────
 import type { ScoreResult, ScoreFactor, PageSignals } from '../shared/types';
-import { WEIGHTS, TOP_DOMAINS, SCORE_SAFE_MAX, SCORE_SUSPICIOUS_MAX, BACKEND_URL } from '../shared/constants';
+import { WEIGHTS, TOP_DOMAINS, TRUSTED_DOMAINS, SCORE_SAFE_MAX, SCORE_SUSPICIOUS_MAX, BACKEND_URL } from '../shared/constants';
 import { levenshtein, clamp, getBaseDomain } from '../shared/utils';
 import { StorageManager } from './storage';
 
@@ -14,6 +14,11 @@ export class RiskEngine {
         const domain = getBaseDomain(hostname);
         const factors: ScoreFactor[] = [];
         let rawScore = 0;
+
+        // 0. Trusted domain check (Google, YouTube, banks etc.)
+        if (TRUSTED_DOMAINS.some(td => domain === td || domain.endsWith('.' + td))) {
+            return this.buildResult(0, [{ signal: 'trusted_domain', weight: 0, description: 'Güvenilir site (bilinen domain)' }]);
+        }
 
         // 1. Whitelist check
         if (await this.storage.isWhitelisted(domain)) {

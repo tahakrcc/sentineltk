@@ -96,3 +96,16 @@ export const TOP_DOMAINS = [
     'trendyol.com', 'hepsiburada.com', 'n11.com', 'sahibinden.com',
     'binance.com', 'btcturk.com', 'paribu.com',
 ];
+
+// Trusted domains that ALWAYS get score 0 (no analysis needed)
+export const TRUSTED_DOMAINS = [
+    'google.com', 'google.com.tr', 'youtube.com', 'facebook.com', 'twitter.com',
+    'instagram.com', 'linkedin.com', 'amazon.com', 'apple.com', 'microsoft.com',
+    'github.com', 'stackoverflow.com', 'wikipedia.org', 'reddit.com', 'whatsapp.com',
+    'netflix.com', 'spotify.com', 'zoom.us', 'discord.com', 'twitch.tv',
+    // Turkish trusted
+    'garanti.com.tr', 'akbank.com', 'isbank.com.tr', 'yapikredi.com.tr',
+    'ziraatbank.com.tr', 'halkbank.com.tr', 'vakifbank.com.tr',
+    'turkiye.gov.tr', 'e-devlet.gov.tr', 'ptt.gov.tr',
+    'trendyol.com', 'hepsiburada.com', 'n11.com', 'sahibinden.com',
+];
