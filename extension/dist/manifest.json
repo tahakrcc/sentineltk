@@ -23,11 +23,11 @@
   },
   "content_scripts": [
     {
+      "js": [
+        "assets/index.ts-loader-lqUsl0HO.js"
+      ],
       "matches": [
         "<all_urls>"
-      ],
-      "js": [
-        "src/content/index.ts-loader.js"
       ],
       "run_at": "document_idle",
       "all_frames": true
@@ -44,8 +44,8 @@
         "<all_urls>"
       ],
       "resources": [
-        "**/*",
-        "*"
+        "assets/constants-C77LFP3V.js",
+        "assets/index.ts-hlOx0Lr9.js"
       ],
       "use_dynamic_url": false
     }

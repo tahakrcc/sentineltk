@@ -5,8 +5,12 @@ import { scanForFakeBadges, scanForUrgencyText, scanForCountdownTimers, scanCont
 import { scanInputFields, monitorPasteOnSensitiveFields } from './inputWatcher';
 import { detectBehavioralSignals, startBehaviorMonitor } from './behaviorTracker';
 import { applyRiskAction, showPasteWarning } from './formProtection';
+import { initLinkPreview } from './linkPreview';
 
 console.log('[SentinelTK] Content script loaded');
+
+// Initialize link hover preview
+initLinkPreview();
 
 // ═══════════════════════════════════════════════════════════════
 // 1. INITIAL SCAN (debounced after DOM settles)

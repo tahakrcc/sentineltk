@@ -1,26 +1,43 @@
 {
   "../../../../../@crx/manifest": {
-    "file": "assets/crx-manifest.js-DTv_lNcJ.js",
+    "file": "assets/crx-manifest.js-BhTAbo88.js",
     "name": "crx-manifest.js",
     "src": "../../../../../@crx/manifest",
     "isEntry": true
   },
+  "_constants-C77LFP3V.js": {
+    "file": "assets/constants-C77LFP3V.js",
+    "name": "constants"
+  },
   "index.html": {
-    "file": "assets/index.html-DHzzI5Nz.js",
+    "file": "assets/index.html-DwdY390L.js",
     "name": "index.html",
     "src": "index.html",
-    "isEntry": true
+    "isEntry": true,
+    "imports": [
+      "_constants-C77LFP3V.js"
+    ]
+  },
+  "index.ts-loader.js": {
+    "file": "assets/index.ts-loader-lqUsl0HO.js",
+    "src": "index.ts-loader.js"
   },
   "src/background/index.ts": {
-    "file": "assets/index.ts-C_ZDuoVR.js",
+    "file": "assets/index.ts-CipxFERn.js",
     "name": "index.ts",
     "src": "src/background/index.ts",
-    "isEntry": true
+    "isEntry": true,
+    "imports": [
+      "_constants-C77LFP3V.js"
+    ]
   },
   "src/content/index.ts": {
-    "file": "assets/index.ts-Ct1wLX-8.js",
+    "file": "assets/index.ts-hlOx0Lr9.js",
     "name": "index.ts",
     "src": "src/content/index.ts",
-    "isEntry": true
+    "isEntry": true,
+    "imports": [
+      "_constants-C77LFP3V.js"
+    ]
   }
 }

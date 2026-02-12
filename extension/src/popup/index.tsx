@@ -362,7 +362,7 @@ const Popup: React.FC = () => {
 // ── Styles (Detailed Update) ──
 const styles: Record<string, React.CSSProperties> = {
     container: {
-        width: 360, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        width: 400, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         background: 'linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%)', color: '#e5e7eb', fontSize: 13,
         overflow: 'hidden', minHeight: 400,
     },
@@ -412,11 +412,11 @@ const styles: Record<string, React.CSSProperties> = {
     noFactors: { color: '#64748b', fontSize: 11, textAlign: 'center' as const, padding: 8 },
 
     // Tech items
-    techItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#e2e8f0', marginBottom: 4 },
-    techLabel: { color: '#94a3b8', fontWeight: 600 },
-    techSubItem: { display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#cbd5e1', paddingLeft: 8, marginBottom: 3 },
-    techSubLabel: { color: '#64748b' },
-    techValue: { maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
+    techItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#f1f5f9', marginBottom: 6 },
+    techLabel: { color: '#e2e8f0', fontWeight: 600 },
+    techSubItem: { display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#e2e8f0', paddingLeft: 8, marginBottom: 4 },
+    techSubLabel: { color: '#94a3b8', fontWeight: 500 },
+    techValue: { maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const, color: '#f1f5f9' },
 
     actions: { padding: '0 12px 8px', display: 'flex', flexDirection: 'column' as const, gap: 6 },
     overrideBtn: {

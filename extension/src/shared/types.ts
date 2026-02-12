@@ -90,4 +90,5 @@ export type MessageType =
     | { type: 'USER_OVERRIDE'; tabId: number }
     | { type: 'REPORT_SITE'; domain: string; reason: string }
     | { type: 'ADD_WHITELIST'; domain: string }
-    | { type: 'REDIRECT_DETECTED'; count: number; rapid: boolean };
+    | { type: 'REDIRECT_DETECTED'; count: number; rapid: boolean }
+    | { type: 'LINK_PREVIEW_SCORE'; domain: string };
