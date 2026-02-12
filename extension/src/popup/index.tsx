@@ -13,12 +13,34 @@ const Popup: React.FC = () => {
     const [showReportForm, setShowReportForm] = useState(false);
     const [expanded, setExpanded] = useState(true);
     const [techExpanded, setTechExpanded] = useState(false);
-    const [linkPreviewEnabled, setLinkPreviewEnabled] = useState(true);
+    const [settingsExpanded, setSettingsExpanded] = useState(false);
+    const [featureSettings, setFeatureSettings] = useState<Record<string, boolean>>({
+        linkPreviewEnabled: true,
+        notificationsEnabled: true,
+        downloadProtectionEnabled: true,
+        autofillWarningEnabled: true,
+        clipboardGuardEnabled: true,
+        emailScanEnabled: true,
+        leakCheckEnabled: true,
+    });
+
+    const settingsConfig = [
+        { key: 'linkPreviewEnabled', icon: '🔗', label: 'Link Önizleme' },
+        { key: 'notificationsEnabled', icon: '🔔', label: 'Tehlike Bildirimleri' },
+        { key: 'downloadProtectionEnabled', icon: '📥', label: 'İndirme Koruması' },
+        { key: 'autofillWarningEnabled', icon: '📋', label: 'Autofill Uyarısı' },
+        { key: 'clipboardGuardEnabled', icon: '📎', label: 'Clipboard Kontrolü' },
+        { key: 'emailScanEnabled', icon: '📧', label: 'E-posta Link Tarama' },
+        { key: 'leakCheckEnabled', icon: '🔑', label: 'Şifre Sızıntı Kontrolü' },
+    ];
 
     useEffect(() => {
-        // Load link preview setting
-        chrome.storage.local.get('linkPreviewEnabled', (result) => {
-            setLinkPreviewEnabled(result.linkPreviewEnabled !== false);
+        // Load all settings
+        const keys = settingsConfig.map(s => s.key);
+        chrome.storage.local.get(keys, (result) => {
+            const loaded: Record<string, boolean> = {};
+            keys.forEach(k => { loaded[k] = result[k] !== false; });
+            setFeatureSettings(loaded);
         });
 
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -37,10 +59,10 @@ const Popup: React.FC = () => {
         });
     }, []);
 
-    const toggleLinkPreview = () => {
-        const newVal = !linkPreviewEnabled;
-        setLinkPreviewEnabled(newVal);
-        chrome.storage.local.set({ linkPreviewEnabled: newVal });
+    const toggleSetting = (key: string) => {
+        const newVal = !featureSettings[key];
+        setFeatureSettings(prev => ({ ...prev, [key]: newVal }));
+        chrome.storage.local.set({ [key]: newVal });
     };
 
     const fetchTechnicalDetails = async (domain: string) => {
@@ -335,30 +357,40 @@ const Popup: React.FC = () => {
                 )}
             </div>
 
-            {/* Link Preview Toggle */}
-            <div style={styles.settingsSection}>
-                <div style={styles.settingRow}>
-                    <div style={styles.settingInfo}>
-                        <span style={styles.settingIcon}>🔗</span>
-                        <span style={styles.settingLabel}>Link Önizleme</span>
-                    </div>
-                    <div
-                        style={{
-                            ...styles.toggleTrack,
-                            background: linkPreviewEnabled
-                                ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
-                                : '#374151',
-                        }}
-                        onClick={toggleLinkPreview}
-                    >
-                        <div
-                            style={{
-                                ...styles.toggleThumb,
-                                transform: linkPreviewEnabled ? 'translateX(16px)' : 'translateX(0)',
-                            }}
-                        />
-                    </div>
+            {/* Settings Section */}
+            <div style={styles.factorsSection}>
+                <div style={styles.factorsHeader} onClick={() => setSettingsExpanded(!settingsExpanded)}>
+                    <h4 style={styles.factorsTitle}>⚙️ Özellik Ayarları</h4>
+                    <span style={styles.expandIcon}>{settingsExpanded ? '▼' : '▶'}</span>
                 </div>
+                {settingsExpanded && (
+                    <div style={{ padding: '4px 8px 8px' }}>
+                        {settingsConfig.map(s => (
+                            <div key={s.key} style={styles.settingRow}>
+                                <div style={styles.settingInfo}>
+                                    <span style={styles.settingIcon}>{s.icon}</span>
+                                    <span style={styles.settingLabel}>{s.label}</span>
+                                </div>
+                                <div
+                                    style={{
+                                        ...styles.toggleTrack,
+                                        background: featureSettings[s.key]
+                                            ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
+                                            : '#374151',
+                                    }}
+                                    onClick={() => toggleSetting(s.key)}
+                                >
+                                    <div
+                                        style={{
+                                            ...styles.toggleThumb,
+                                            transform: featureSettings[s.key] ? 'translateX(16px)' : 'translateX(0)',
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Actions */}
@@ -505,6 +537,7 @@ const styles: Record<string, React.CSSProperties> = {
     },
     settingRow: {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: 6, padding: '4px 4px',
     },
     settingInfo: { display: 'flex', alignItems: 'center', gap: 6 },
     settingIcon: { fontSize: 14 },

@@ -8,29 +8,29 @@ let warningBannerElement: HTMLElement | null = null;
  * Apply a risk action received from background.
  */
 export function applyRiskAction(action: RiskAction, score: number): void {
-    switch (action) {
-        case 'NONE':
-            removeOverlay();
-            removeWarningBanner();
-            unlockForms();
-            break;
+  switch (action) {
+    case 'NONE':
+      removeOverlay();
+      removeWarningBanner();
+      unlockForms();
+      break;
 
-        case 'WARN':
-            removeOverlay();
-            showWarningBanner(score);
-            break;
+    case 'WARN':
+      removeOverlay();
+      showWarningBanner(score);
+      break;
 
-        case 'BLOCK_FORM':
-            removeOverlay();
-            showWarningBanner(score);
-            lockForms();
-            break;
+    case 'BLOCK_FORM':
+      removeOverlay();
+      showWarningBanner(score);
+      lockForms();
+      break;
 
-        case 'FULL_BLOCK':
-            lockForms();
-            showBlockOverlay(score);
-            break;
-    }
+    case 'FULL_BLOCK':
+      lockForms();
+      showBlockOverlay(score);
+      break;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -38,11 +38,11 @@ export function applyRiskAction(action: RiskAction, score: number): void {
 // ═══════════════════════════════════════════════════════════════
 
 function showWarningBanner(score: number): void {
-    if (warningBannerElement) return;
+  if (warningBannerElement) return;
 
-    warningBannerElement = document.createElement('div');
-    warningBannerElement.id = 'sentineltk-warning-banner';
-    warningBannerElement.innerHTML = `
+  warningBannerElement = document.createElement('div');
+  warningBannerElement.id = 'sentineltk-warning-banner';
+  warningBannerElement.innerHTML = `
     <div style="
       position: fixed; top: 0; left: 0; right: 0; z-index: 2147483646;
       background: linear-gradient(135deg, #f59e0b, #d97706);
@@ -61,16 +61,16 @@ function showWarningBanner(score: number): void {
     </div>
   `;
 
-    document.documentElement.appendChild(warningBannerElement);
+  document.documentElement.appendChild(warningBannerElement);
 
-    document.getElementById('sentineltk-dismiss-warn')?.addEventListener('click', () => {
-        removeWarningBanner();
-    });
+  document.getElementById('sentineltk-dismiss-warn')?.addEventListener('click', () => {
+    removeWarningBanner();
+  });
 }
 
 function removeWarningBanner(): void {
-    warningBannerElement?.remove();
-    warningBannerElement = null;
+  warningBannerElement?.remove();
+  warningBannerElement = null;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -78,11 +78,11 @@ function removeWarningBanner(): void {
 // ═══════════════════════════════════════════════════════════════
 
 function showBlockOverlay(score: number): void {
-    if (overlayElement) return;
+  if (overlayElement) return;
 
-    overlayElement = document.createElement('div');
-    overlayElement.id = 'sentineltk-block-overlay';
-    overlayElement.innerHTML = `
+  overlayElement = document.createElement('div');
+  overlayElement.id = 'sentineltk-block-overlay';
+  overlayElement.innerHTML = `
     <div style="
       position: fixed; inset: 0; z-index: 2147483647;
       background: rgba(15,15,15,0.97); color: #fff;
@@ -125,54 +125,54 @@ function showBlockOverlay(score: number): void {
     </div>
   `;
 
-    document.documentElement.appendChild(overlayElement);
+  document.documentElement.appendChild(overlayElement);
 
-    // Go back button
-    document.getElementById('sentineltk-go-back')?.addEventListener('click', () => {
-        history.back();
-    });
+  // Go back button
+  document.getElementById('sentineltk-go-back')?.addEventListener('click', () => {
+    history.back();
+  });
 
-    // Override button - requires 3 second hold
-    const overrideBtn = document.getElementById('sentineltk-override');
-    let holdTimer: ReturnType<typeof setTimeout> | null = null;
+  // Override button - requires 3 second hold
+  const overrideBtn = document.getElementById('sentineltk-override');
+  let holdTimer: ReturnType<typeof setTimeout> | null = null;
 
-    overrideBtn?.addEventListener('mousedown', () => {
-        overrideBtn.textContent = 'Basılı tutun... 3';
-        let countdown = 3;
-        holdTimer = setInterval(() => {
-            countdown--;
-            if (countdown <= 0) {
-                clearInterval(holdTimer!);
-                // Send override message to background
-                chrome.runtime.sendMessage({ type: 'USER_OVERRIDE' });
-                removeOverlay();
-                unlockForms();
-            } else {
-                overrideBtn.textContent = `Basılı tutun... ${countdown}`;
-            }
-        }, 1000);
-    });
+  overrideBtn?.addEventListener('mousedown', () => {
+    overrideBtn.textContent = 'Basılı tutun... 3';
+    let countdown = 3;
+    holdTimer = setInterval(() => {
+      countdown--;
+      if (countdown <= 0) {
+        clearInterval(holdTimer!);
+        // Send override message to background
+        chrome.runtime.sendMessage({ type: 'USER_OVERRIDE' });
+        removeOverlay();
+        unlockForms();
+      } else {
+        overrideBtn.textContent = `Basılı tutun... ${countdown}`;
+      }
+    }, 1000);
+  });
 
-    overrideBtn?.addEventListener('mouseup', () => {
-        if (holdTimer) {
-            clearInterval(holdTimer);
-            holdTimer = null;
-            overrideBtn.textContent = 'Riski anlıyorum, devam et (3s basılı tut)';
-        }
-    });
+  overrideBtn?.addEventListener('mouseup', () => {
+    if (holdTimer) {
+      clearInterval(holdTimer);
+      holdTimer = null;
+      overrideBtn.textContent = 'Riski anlıyorum, devam et (3s basılı tut)';
+    }
+  });
 
-    overrideBtn?.addEventListener('mouseleave', () => {
-        if (holdTimer) {
-            clearInterval(holdTimer);
-            holdTimer = null;
-            overrideBtn.textContent = 'Riski anlıyorum, devam et (3s basılı tut)';
-        }
-    });
+  overrideBtn?.addEventListener('mouseleave', () => {
+    if (holdTimer) {
+      clearInterval(holdTimer);
+      holdTimer = null;
+      overrideBtn.textContent = 'Riski anlıyorum, devam et (3s basılı tut)';
+    }
+  });
 }
 
 function removeOverlay(): void {
-    overlayElement?.remove();
-    overlayElement = null;
+  overlayElement?.remove();
+  overlayElement = null;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -180,58 +180,58 @@ function removeOverlay(): void {
 // ═══════════════════════════════════════════════════════════════
 
 function lockForms(): void {
-    const forms = document.querySelectorAll('form');
-    forms.forEach(form => {
-        if (form.dataset.sentineltkLocked) return;
-        form.dataset.sentineltkLocked = 'true';
+  const forms = document.querySelectorAll('form');
+  forms.forEach(form => {
+    if (form.dataset.sentineltkLocked) return;
+    form.dataset.sentineltkLocked = 'true';
 
-        // Disable submit buttons
-        const submits = form.querySelectorAll('button[type="submit"], input[type="submit"], button:not([type])');
-        submits.forEach(btn => {
-            (btn as HTMLButtonElement).disabled = true;
-            (btn as HTMLElement).style.opacity = '0.4';
-            (btn as HTMLElement).style.cursor = 'not-allowed';
-        });
+    // Disable submit buttons
+    const submits = form.querySelectorAll('button[type="submit"], input[type="submit"], button:not([type])');
+    submits.forEach(btn => {
+      (btn as HTMLButtonElement).disabled = true;
+      (btn as HTMLElement).style.opacity = '0.4';
+      (btn as HTMLElement).style.cursor = 'not-allowed';
+    });
 
-        // Add visual warning to form
-        const warning = document.createElement('div');
-        warning.className = 'sentineltk-form-warning';
-        warning.style.cssText = `
+    // Add visual warning to form
+    const warning = document.createElement('div');
+    warning.className = 'sentineltk-form-warning';
+    warning.style.cssText = `
       background: linear-gradient(135deg, #7f1d1d, #991b1b);
       color: #fca5a5; padding: 10px 14px; border-radius: 6px;
       font-size: 13px; font-family: -apple-system, sans-serif;
       margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
       border: 1px solid rgba(239,68,68,0.3);
     `;
-        warning.innerHTML = '🛡️ <strong>SentinelTK:</strong> Bu form şüpheli bir sayfada bulunuyor. Gönder butonu kilitlendi.';
-        form.prepend(warning);
+    warning.innerHTML = '🛡️ <strong>SentinelTK:</strong> Bu form şüpheli bir sayfada bulunuyor. Gönder butonu kilitlendi.';
+    form.prepend(warning);
 
-        // Block submit event
-        form.addEventListener('submit', (e) => {
-            if (form.dataset.sentineltkLocked === 'true') {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-            }
-        }, true);
-    });
+    // Block submit event
+    form.addEventListener('submit', (e) => {
+      if (form.dataset.sentineltkLocked === 'true') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    }, true);
+  });
 }
 
 function unlockForms(): void {
-    const forms = document.querySelectorAll('form');
-    forms.forEach(form => {
-        form.dataset.sentineltkLocked = '';
+  const forms = document.querySelectorAll('form');
+  forms.forEach(form => {
+    form.dataset.sentineltkLocked = '';
 
-        // Re-enable submit buttons
-        const submits = form.querySelectorAll('button[type="submit"], input[type="submit"], button:not([type])');
-        submits.forEach(btn => {
-            (btn as HTMLButtonElement).disabled = false;
-            (btn as HTMLElement).style.opacity = '';
-            (btn as HTMLElement).style.cursor = '';
-        });
-
-        // Remove warnings
-        form.querySelectorAll('.sentineltk-form-warning').forEach(w => w.remove());
+    // Re-enable submit buttons
+    const submits = form.querySelectorAll('button[type="submit"], input[type="submit"], button:not([type])');
+    submits.forEach(btn => {
+      (btn as HTMLButtonElement).disabled = false;
+      (btn as HTMLElement).style.opacity = '';
+      (btn as HTMLElement).style.cursor = '';
     });
+
+    // Remove warnings
+    form.querySelectorAll('.sentineltk-form-warning').forEach(w => w.remove());
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -239,23 +239,107 @@ function unlockForms(): void {
 // ═══════════════════════════════════════════════════════════════
 
 export function showPasteWarning(): void {
-    const existing = document.getElementById('sentineltk-paste-warning');
-    if (existing) return;
+  const existing = document.getElementById('sentineltk-paste-warning');
+  if (existing) return;
 
-    const toast = document.createElement('div');
-    toast.id = 'sentineltk-paste-warning';
-    toast.style.cssText = `
+  const toast = document.createElement('div');
+  toast.id = 'sentineltk-paste-warning';
+  toast.style.cssText = `
     position: fixed; bottom: 20px; right: 20px; z-index: 2147483646;
     background: rgba(239,68,68,0.95); color: #fff; padding: 12px 20px;
     border-radius: 8px; font-family: -apple-system, sans-serif;
     font-size: 13px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     animation: sentineltk-slideUp 0.3s ease;
   `;
-    toast.textContent = '⚠️ Yüksek riskli sitede yapıştırma işlemi algılandı!';
+  toast.textContent = '⚠️ Yüksek riskli sitede yapıştırma işlemi algılandı!';
 
-    document.documentElement.appendChild(toast);
+  document.documentElement.appendChild(toast);
 
-    setTimeout(() => toast.remove(), 4000);
+  setTimeout(() => toast.remove(), 4000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUTOFILL WARNING
+// ═══════════════════════════════════════════════════════════════
+
+export function showAutofillWarning(): void {
+  const existing = document.getElementById('sentineltk-autofill-warning');
+  if (existing) return;
+
+  const banner = document.createElement('div');
+  banner.id = 'sentineltk-autofill-warning';
+  banner.style.cssText = `
+    position: fixed; top: 0; left: 0; right: 0; z-index: 2147483646;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: #fff; padding: 12px 20px; font-family: -apple-system, sans-serif;
+    font-size: 14px; display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.3); animation: sentineltk-slideDown 0.3s ease;
+  `;
+  banner.innerHTML = `
+    <span>
+      <strong>🚨 SentinelTK:</strong> Şüpheli sitede otomatik doldurma algılandı!
+      Kişisel bilgileriniz otomatik olarak girilmiş olabilir.
+    </span>
+    <button id="sentineltk-dismiss-autofill" style="
+      background: rgba(0,0,0,0.3); border: none; color: #fff; padding: 4px 12px;
+      border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;
+    ">Kapat</button>
+  `;
+
+  document.documentElement.appendChild(banner);
+
+  document.getElementById('sentineltk-dismiss-autofill')?.addEventListener('click', () => {
+    banner.remove();
+  });
+
+  // Auto dismiss after 8 seconds
+  setTimeout(() => banner.remove(), 8000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DOWNLOAD WARNING
+// ═══════════════════════════════════════════════════════════════
+
+export function showDownloadWarning(filename: string, domain: string, score: number): void {
+  const existing = document.getElementById('sentineltk-download-warning');
+  if (existing) existing.remove();
+
+  const color = score > 69 ? '#ef4444' : '#f59e0b';
+  const label = score > 69 ? '🚨 Tehlikeli' : '⚠️ Şüpheli';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'sentineltk-download-warning';
+  overlay.style.cssText = `
+    position: fixed; bottom: 20px; right: 20px; z-index: 2147483647;
+    background: linear-gradient(135deg, #1e1b4b, #0f172a); color: #e5e7eb;
+    padding: 16px 20px; border-radius: 12px; font-family: system-ui, sans-serif;
+    font-size: 13px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    border-left: 4px solid ${color}; max-width: 380px;
+    animation: sentineltk-slideUp 0.3s ease;
+  `;
+  overlay.innerHTML = `
+    <div style="font-weight:700;color:${color};margin-bottom:6px;font-size:14px">
+      ${label} Siteden İndirme
+    </div>
+    <div style="font-size:12px;color:#94a3b8;margin-bottom:8px">
+      <strong>${domain}</strong> sitesinden <strong>${filename}</strong> dosyası indiriliyor.
+      <br>Bu site ${score}/100 risk skoru aldı.
+    </div>
+    <div style="display:flex;gap:8px">
+      <button data-dismiss style="
+        flex:1; background:${color}; color:#fff; border:none; padding:8px;
+        border-radius:6px; cursor:pointer; font-size:12px; font-weight:600;
+      ">Anladım</button>
+    </div>
+  `;
+
+  document.documentElement.appendChild(overlay);
+
+  overlay.querySelector('[data-dismiss]')?.addEventListener('click', () => {
+    overlay.remove();
+  });
+
+  setTimeout(() => overlay.remove(), 10000);
 }
 
 // CSS Animation injection
@@ -266,3 +350,4 @@ style.textContent = `
   @keyframes sentineltk-slideUp { from { transform:translateY(100%); opacity:0 } to { transform:translateY(0); opacity:1 } }
 `;
 document.documentElement.appendChild(style);
+

@@ -192,24 +192,56 @@ async function applyRiskAction(tabId: number, score: number, state: TabState) {
     updateBadge(tabId, score);
 
     if (score <= SCORE_SAFE_MAX) {
-        // SAFE → release everything
         await ruleManager.disableSafeStart(tabId);
         state.safeStartActive = false;
         storage.setTabState(tabId, state);
         sendToTab(tabId, { type: 'RISK_ACTION', action: 'NONE', score });
     } else if (score <= SCORE_SUSPICIOUS_MAX) {
-        // SUSPICIOUS → release network but warn
         await ruleManager.disableSafeStart(tabId);
         state.safeStartActive = false;
         storage.setTabState(tabId, state);
         sendToTab(tabId, { type: 'RISK_ACTION', action: 'WARN', score });
     } else {
-        // DANGER → keep blocks, inject overlay
+        // DANGER
         state.safeStartActive = true;
         storage.setTabState(tabId, state);
         sendToTab(tabId, { type: 'RISK_ACTION', action: 'FULL_BLOCK', score });
+
+        // Real-time notification
+        showDangerNotification(state.hostname, score, tabId);
     }
+
+    // Record scan history
+    storage.recordScanHistory(state.hostname, score, score <= SCORE_SAFE_MAX ? 'safe' : score <= SCORE_SUSPICIOUS_MAX ? 'suspicious' : 'danger');
 }
+
+// ═══════════════════════════════════════════════════════════════
+// REAL-TIME NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════════
+
+async function showDangerNotification(hostname: string, score: number, tabId: number) {
+    const settings = await chrome.storage.local.get('notificationsEnabled');
+    if (settings.notificationsEnabled === false) return;
+
+    chrome.notifications.create(`sentinel-danger-${tabId}`, {
+        type: 'basic',
+        iconUrl: 'icons/icon128.png',
+        title: '🚨 SentinelTK — Tehlikeli Site Tespit Edildi!',
+        message: `${hostname} sitesi ${score}/100 risk skoru aldı. Bu site tehlikeli olabilir!`,
+        priority: 2,
+        requireInteraction: true,
+    });
+}
+
+// Click notification → focus tab
+chrome.notifications.onClicked.addListener((notificationId) => {
+    const match = notificationId.match(/sentinel-danger-(\d+)/);
+    if (match) {
+        const tabId = parseInt(match[1]);
+        chrome.tabs.update(tabId, { active: true });
+        chrome.notifications.clear(notificationId);
+    }
+});
 
 function handleUserOverride(tabId: number) {
     const state = storage.getTabState(tabId);
@@ -262,7 +294,52 @@ async function reportSite(domain: string, reason: string) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// 7. TAB CLEANUP
+// 7. DOWNLOAD PROTECTION
+// ═══════════════════════════════════════════════════════════════
+
+chrome.downloads.onCreated.addListener(async (downloadItem) => {
+    const settings = await chrome.storage.local.get('downloadProtectionEnabled');
+    if (settings.downloadProtectionEnabled === false) return;
+
+    // Find which tab initiated this download
+    if (!downloadItem.url) return;
+
+    let sourceHostname = '';
+    try {
+        // Check referrer or the download URL's origin
+        const refUrl = downloadItem.referrer || downloadItem.url;
+        sourceHostname = new URL(refUrl).hostname;
+    } catch { return; }
+
+    // Check all tabs for a matching hostname with elevated risk
+    const allTabs = await chrome.tabs.query({});
+    for (const tab of allTabs) {
+        if (!tab.id || !tab.url) continue;
+        try {
+            const tabHost = new URL(tab.url).hostname;
+            if (tabHost === sourceHostname) {
+                const state = storage.getTabState(tab.id);
+                if (state?.score && state.score.score > SCORE_SAFE_MAX) {
+                    // Suspicious or dangerous site — warn via content script
+                    sendDownloadWarning(tab.id, downloadItem.filename || 'dosya', sourceHostname, state.score.score);
+                    break;
+                }
+            }
+        } catch { continue; }
+    }
+});
+
+function sendDownloadWarning(tabId: number, filename: string, domain: string, score: number) {
+    chrome.tabs.sendMessage(tabId, {
+        type: 'DOWNLOAD_WARNING',
+        filename,
+        domain,
+        score,
+    }).catch(() => { });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 8. TAB CLEANUP
 // ═══════════════════════════════════════════════════════════════
 
 chrome.tabs.onRemoved.addListener((tabId) => {
@@ -272,9 +349,25 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// 8. INSTALL
+// 9. INSTALL
 // ═══════════════════════════════════════════════════════════════
 
 chrome.runtime.onInstalled.addListener(() => {
     console.log('[SentinelTK] Extension installed / updated');
+    // Set default settings
+    chrome.storage.local.get([
+        'linkPreviewEnabled', 'notificationsEnabled', 'downloadProtectionEnabled',
+        'autofillWarningEnabled', 'clipboardGuardEnabled', 'emailScanEnabled', 'leakCheckEnabled'
+    ], (result) => {
+        const defaults: Record<string, boolean> = {};
+        if (result.linkPreviewEnabled === undefined) defaults.linkPreviewEnabled = true;
+        if (result.notificationsEnabled === undefined) defaults.notificationsEnabled = true;
+        if (result.downloadProtectionEnabled === undefined) defaults.downloadProtectionEnabled = true;
+        if (result.autofillWarningEnabled === undefined) defaults.autofillWarningEnabled = true;
+        if (result.clipboardGuardEnabled === undefined) defaults.clipboardGuardEnabled = true;
+        if (result.emailScanEnabled === undefined) defaults.emailScanEnabled = true;
+        if (result.leakCheckEnabled === undefined) defaults.leakCheckEnabled = true;
+        if (Object.keys(defaults).length > 0) chrome.storage.local.set(defaults);
+    });
 });
+

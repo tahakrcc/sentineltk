@@ -9,7 +9,9 @@
         "declarativeNetRequest",
         "declarativeNetRequestWithHostAccess",
         "scripting",
-        "webNavigation"
+        "webNavigation",
+        "notifications",
+        "downloads"
     ],
     "host_permissions": [
         "<all_urls>"

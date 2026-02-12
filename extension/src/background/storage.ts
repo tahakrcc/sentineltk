@@ -108,11 +108,31 @@ export class StorageManager {
     }
 
     // ── User Settings ──
+    sensitivityLevel: 'low' | 'medium' | 'high' = 'medium';
+    telemetryEnabled = false;
+
     async getSettings(): Promise<{
         sensitivityLevel: 'low' | 'medium' | 'high';
         telemetryEnabled: boolean;
     }> {
         const data = await chrome.storage.local.get('settings');
         return data.settings || { sensitivityLevel: 'medium', telemetryEnabled: false };
+    }
+
+    // ── Scan History ──
+    async recordScanHistory(domain: string, score: number, level: string): Promise<void> {
+        const data = await chrome.storage.local.get('scanHistory');
+        const history: Array<{ domain: string; score: number; level: string; timestamp: number }> = data.scanHistory || [];
+        history.unshift({ domain, score, level, timestamp: Date.now() });
+        // Keep max 500 entries
+        if (history.length > 500) history.length = 500;
+        await chrome.storage.local.set({ scanHistory: history });
+    }
+
+    async getScanHistory(days: number = 7): Promise<Array<{ domain: string; score: number; level: string; timestamp: number }>> {
+        const data = await chrome.storage.local.get('scanHistory');
+        const history: Array<{ domain: string; score: number; level: string; timestamp: number }> = data.scanHistory || [];
+        const cutoff = Date.now() - (days * 86400000);
+        return history.filter(h => h.timestamp > cutoff);
     }
 }

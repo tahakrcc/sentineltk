@@ -4,13 +4,19 @@ import { DEBOUNCE_DOM_SCAN_MS } from '../shared/constants';
 import { scanForFakeBadges, scanForUrgencyText, scanForCountdownTimers, scanContactInfo, generateFingerprint } from './domScanner';
 import { scanInputFields, monitorPasteOnSensitiveFields } from './inputWatcher';
 import { detectBehavioralSignals, startBehaviorMonitor } from './behaviorTracker';
-import { applyRiskAction, showPasteWarning } from './formProtection';
+import { applyRiskAction, showPasteWarning, showAutofillWarning, showDownloadWarning } from './formProtection';
 import { initLinkPreview } from './linkPreview';
+import { initClipboardGuard } from './clipboardGuard';
+import { initEmailScanner } from './emailScanner';
+import { initLeakCheck } from './leakCheck';
 
 console.log('[SentinelTK] Content script loaded');
 
-// Initialize link hover preview
+// Initialize modules
 initLinkPreview();
+initClipboardGuard();
+initEmailScanner();
+initLeakCheck();
 
 // ═══════════════════════════════════════════════════════════════
 // 1. INITIAL SCAN (debounced after DOM settles)
@@ -93,7 +99,45 @@ monitorPasteOnSensitiveFields(() => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// 5. MESSAGE HANDLING FROM BACKGROUND
+// 5. AUTOFILL DETECTION
+// ═══════════════════════════════════════════════════════════════
+
+(function initAutofillDetection() {
+    let autofillEnabled = true;
+    chrome.storage.local.get('autofillWarningEnabled', (result) => {
+        autofillEnabled = result.autofillWarningEnabled !== false;
+    });
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && changes.autofillWarningEnabled) {
+            autofillEnabled = changes.autofillWarningEnabled.newValue !== false;
+        }
+    });
+
+    // Detect autofill: multiple inputs filled within a very short time
+    let autofillChangeCount = 0;
+    let autofillTimer: ReturnType<typeof setTimeout> | null = null;
+
+    document.addEventListener('change', (e) => {
+        if (!autofillEnabled) return;
+        if (currentRiskLevel === 'NONE') return; // Only warn on risky sites
+
+        const input = e.target as HTMLInputElement;
+        if (!input || input.tagName !== 'INPUT') return;
+
+        autofillChangeCount++;
+        if (autofillTimer) clearTimeout(autofillTimer);
+        autofillTimer = setTimeout(() => {
+            if (autofillChangeCount >= 2) {
+                // Multiple fields changed nearly simultaneously = likely autofill
+                showAutofillWarning();
+            }
+            autofillChangeCount = 0;
+        }, 50); // 50ms window — autofill fills all fields almost instantly
+    }, true);
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// 6. MESSAGE HANDLING FROM BACKGROUND
 // ═══════════════════════════════════════════════════════════════
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -101,4 +145,9 @@ chrome.runtime.onMessage.addListener((message) => {
         currentRiskLevel = message.action as RiskAction;
         applyRiskAction(message.action, message.score);
     }
+
+    if (message.type === 'DOWNLOAD_WARNING') {
+        showDownloadWarning(message.filename, message.domain, message.score);
+    }
 });
+

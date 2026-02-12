@@ -9,7 +9,9 @@
     "declarativeNetRequest",
     "declarativeNetRequestWithHostAccess",
     "scripting",
-    "webNavigation"
+    "webNavigation",
+    "notifications",
+    "downloads"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -24,7 +26,7 @@
   "content_scripts": [
     {
       "js": [
-        "assets/index.ts-loader-DqVsC5jz.js"
+        "assets/index.ts-loader-DlclHMvD.js"
       ],
       "matches": [
         "<all_urls>"
@@ -45,7 +47,7 @@
       ],
       "resources": [
         "assets/constants-C77LFP3V.js",
-        "assets/index.ts-Bpsaj9zv.js"
+        "assets/index.ts-ClzA9CxW.js"
       ],
       "use_dynamic_url": false
     }

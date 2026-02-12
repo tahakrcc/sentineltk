@@ -1,6 +1,6 @@
 {
   "../../../../../@crx/manifest": {
-    "file": "assets/crx-manifest.js-BhTAbo88.js",
+    "file": "assets/crx-manifest.js-Du1cX3sc.js",
     "name": "crx-manifest.js",
     "src": "../../../../../@crx/manifest",
     "isEntry": true
@@ -10,7 +10,7 @@
     "name": "constants"
   },
   "index.html": {
-    "file": "assets/index.html-iLnxkrzf.js",
+    "file": "assets/index.html-C5XE1V07.js",
     "name": "index.html",
     "src": "index.html",
     "isEntry": true,
@@ -19,11 +19,11 @@
     ]
   },
   "index.ts-loader.js": {
-    "file": "assets/index.ts-loader-DqVsC5jz.js",
+    "file": "assets/index.ts-loader-DlclHMvD.js",
     "src": "index.ts-loader.js"
   },
   "src/background/index.ts": {
-    "file": "assets/index.ts-CipxFERn.js",
+    "file": "assets/index.ts-DVFATEAE.js",
     "name": "index.ts",
     "src": "src/background/index.ts",
     "isEntry": true,
@@ -32,7 +32,7 @@
     ]
   },
   "src/content/index.ts": {
-    "file": "assets/index.ts-Bpsaj9zv.js",
+    "file": "assets/index.ts-ClzA9CxW.js",
     "name": "index.ts",
     "src": "src/content/index.ts",
     "isEntry": true,
