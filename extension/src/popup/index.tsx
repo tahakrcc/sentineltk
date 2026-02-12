@@ -13,8 +13,14 @@ const Popup: React.FC = () => {
     const [showReportForm, setShowReportForm] = useState(false);
     const [expanded, setExpanded] = useState(true);
     const [techExpanded, setTechExpanded] = useState(false);
+    const [linkPreviewEnabled, setLinkPreviewEnabled] = useState(true);
 
     useEffect(() => {
+        // Load link preview setting
+        chrome.storage.local.get('linkPreviewEnabled', (result) => {
+            setLinkPreviewEnabled(result.linkPreviewEnabled !== false);
+        });
+
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             const tabId = tabs[0]?.id;
             if (!tabId) { setLoading(false); return; }
@@ -30,6 +36,12 @@ const Popup: React.FC = () => {
             });
         });
     }, []);
+
+    const toggleLinkPreview = () => {
+        const newVal = !linkPreviewEnabled;
+        setLinkPreviewEnabled(newVal);
+        chrome.storage.local.set({ linkPreviewEnabled: newVal });
+    };
 
     const fetchTechnicalDetails = async (domain: string) => {
         setTechLoading(true);
@@ -323,6 +335,32 @@ const Popup: React.FC = () => {
                 )}
             </div>
 
+            {/* Link Preview Toggle */}
+            <div style={styles.settingsSection}>
+                <div style={styles.settingRow}>
+                    <div style={styles.settingInfo}>
+                        <span style={styles.settingIcon}>🔗</span>
+                        <span style={styles.settingLabel}>Link Önizleme</span>
+                    </div>
+                    <div
+                        style={{
+                            ...styles.toggleTrack,
+                            background: linkPreviewEnabled
+                                ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
+                                : '#374151',
+                        }}
+                        onClick={toggleLinkPreview}
+                    >
+                        <div
+                            style={{
+                                ...styles.toggleThumb,
+                                transform: linkPreviewEnabled ? 'translateX(16px)' : 'translateX(0)',
+                            }}
+                        />
+                    </div>
+                </div>
+            </div>
+
             {/* Actions */}
             <div style={styles.actions}>
                 {!showReportForm ? (
@@ -459,6 +497,27 @@ const styles: Record<string, React.CSSProperties> = {
         padding: '6px 16px 10px', borderTop: '1px solid rgba(71, 85, 105, 0.2)',
     },
     miniLoading: { display: 'flex', flexDirection: 'column' as const, alignItems: 'center', padding: 12, gap: 6 },
+
+    // Settings toggle
+    settingsSection: {
+        margin: '0 12px 8px', background: 'rgba(30, 41, 59, 0.6)', borderRadius: 8,
+        border: '1px solid rgba(71, 85, 105, 0.3)', padding: '8px 12px',
+    },
+    settingRow: {
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    },
+    settingInfo: { display: 'flex', alignItems: 'center', gap: 6 },
+    settingIcon: { fontSize: 14 },
+    settingLabel: { fontSize: 12, color: '#94a3b8', fontWeight: 600 },
+    toggleTrack: {
+        width: 36, height: 20, borderRadius: 10, cursor: 'pointer',
+        position: 'relative' as const, transition: 'background 0.2s',
+    },
+    toggleThumb: {
+        width: 16, height: 16, borderRadius: '50%', background: '#fff',
+        position: 'absolute' as const, top: 2, left: 2,
+        transition: 'transform 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+    },
 };
 
 const styleSheet = document.createElement('style');

@@ -10,7 +10,7 @@
     "name": "constants"
   },
   "index.html": {
-    "file": "assets/index.html-DwdY390L.js",
+    "file": "assets/index.html-iLnxkrzf.js",
     "name": "index.html",
     "src": "index.html",
     "isEntry": true,
@@ -19,7 +19,7 @@
     ]
   },
   "index.ts-loader.js": {
-    "file": "assets/index.ts-loader-lqUsl0HO.js",
+    "file": "assets/index.ts-loader-DqVsC5jz.js",
     "src": "index.ts-loader.js"
   },
   "src/background/index.ts": {
@@ -32,7 +32,7 @@
     ]
   },
   "src/content/index.ts": {
-    "file": "assets/index.ts-hlOx0Lr9.js",
+    "file": "assets/index.ts-Bpsaj9zv.js",
     "name": "index.ts",
     "src": "src/content/index.ts",
     "isEntry": true,
